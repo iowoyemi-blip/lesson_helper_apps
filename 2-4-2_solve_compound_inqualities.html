@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solving Compound Inequality Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .feedback-correct {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .feedback-incorrect {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .btn-selected {
+            background-color: #4f46e5 !important;
+            color: white !important;
+            border-color: #4f46e5 !important;
+        }
+        .streak-pop {
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8 m-4 relative">
+        
+        <header class="text-center mb-6">
+            <div id="streak-container" class="absolute top-4 right-4 text-center">
+                <span class="text-sm font-semibold text-white bg-green-500 rounded-full px-3 py-1 shadow-md">Streak: <span id="streak-count">0</span></span>
+           </div>
+            <h1 class="text-3xl font-bold text-gray-800">Solving Compound Inequalities</h1>
+            <p class="text-gray-600 mt-1">Solve the inequality, then graph it and write the interval notation.</p>
+        </header>
+
+        <div class="bg-indigo-600 text-white rounded-lg p-4 mb-6 text-center shadow-md">
+            <p class="text-2xl font-mono" id="inequality-problem"></p>
+        </div>
+
+        <!-- Step 1: Solve -->
+         <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">1. Solve the Inequality</h3>
+            <label for="solved-inequality" class="sr-only">Solved Inequality:</label>
+            <input type="text" id="solved-inequality" class="w-full max-w-md mx-auto p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg text-center block" placeholder="e.g., -2 < x <= 5">
+            <p class="text-xs text-gray-500 mt-2 text-center">Keep the variable 'x' in the middle for conjunctions.</p>
+        </div>
+
+        <!-- Step 2: Graph -->
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">2. Graph the Solution</h3>
+            <canvas id="number-line-canvas" class="w-full h-24 cursor-pointer rounded-md bg-gray-50 border border-gray-200"></canvas>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div>
+                <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Left Endpoint</h4>
+                <div class="flex space-x-2">
+                   <button id="left-open-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Open ( )</button>
+                   <button id="left-closed-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Closed [ ]</button>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Right Endpoint</h4>
+                <div class="flex space-x-2">
+                   <button id="right-open-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Open ( )</button>
+                   <button id="right-closed-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Closed [ ]</button>
+                </div>
+            </div>
+             <div>
+                <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Shading</h4>
+                <div class="flex space-x-2">
+                   <button id="shade-between-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Between</button>
+                   <button id="shade-outwards-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">Outwards</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Interval Notation -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">3. Write the Interval</h3>
+            <label for="interval-notation" class="sr-only">Interval Notation:</label>
+            <input type="text" id="interval-notation" class="w-full max-w-md mx-auto p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg text-center block" placeholder="e.g., (-5, 1] or (-Inf, 0) U (5, Inf)">
+            <p class="text-xs text-gray-500 mt-2 text-center">Use "U" for union and "Inf" for infinity.</p>
+        </div>
+
+
+        <div class="mt-8">
+            <div id="feedback" class="h-8 mb-4 text-center text-xl font-semibold"></div>
+            <div class="flex justify-center space-x-4">
+                <button id="check-btn" class="bg-indigo-500 text-white font-bold py-2 px-8 rounded-lg hover:bg-indigo-600">Check Answer</button>
+                <button id="next-btn" class="bg-gray-700 text-white font-bold py-2 px-8 rounded-lg hover:bg-gray-800" style="display: none;">Next Question</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('number-line-canvas');
+        const ctx = canvas.getContext('2d');
+        const problemDisplay = document.getElementById('inequality-problem');
+        const solvedInput = document.getElementById('solved-inequality');
+        const intervalInput = document.getElementById('interval-notation');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedbackEl = document.getElementById('feedback');
+        const streakCountEl = document.getElementById('streak-count');
+        
+        const buttons = {
+            leftOpen: document.getElementById('left-open-btn'),
+            leftClosed: document.getElementById('left-closed-btn'),
+            rightOpen: document.getElementById('right-open-btn'),
+            rightClosed: document.getElementById('right-closed-btn'),
+            shadeBetween: document.getElementById('shade-between-btn'),
+            shadeOutwards: document.getElementById('shade-outwards-btn'),
+        };
+        
+        let currentInequality = {};
+        let userSelection = { leftEndpoint: null, rightEndpoint: null, shading: null };
+        let streak = 0;
+
+        function generateInequality() {
+            const type = Math.random() > 0.5 ? 'conjunction' : 'disjunction';
+            
+            // 1. Define the solution first
+            let num1_sol = Math.floor(Math.random() * 8) - 9; // -9 to -2
+            let num2_sol = Math.floor(Math.random() * 8) + 2;  // 2 to 9
+
+            let problem = { num1: num1_sol, num2: num2_sol };
+
+            // 2. Work backwards to create the unsolved problem
+            if (type === 'conjunction') {
+                const opLeft_sol = Math.random() > 0.5 ? '<' : '<=';
+                const opRight_sol = Math.random() > 0.5 ? '<' : '<=';
+                problem.correctSolved = `${num1_sol} ${opLeft_sol} x ${opRight_sol} ${num2_sol}`;
+
+                const m = Math.random() > 0.5 ? 2 : -2;
+                const d = Math.floor(Math.random() * 9) - 4; // -4 to 4
+                const term = `${m}x${d === 0 ? "" : (d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`)}`;
+                
+                let bound1 = m * num1_sol + d;
+                let bound2 = m * num2_sol + d;
+                let opLeft_prob = opLeft_sol;
+                let opRight_prob = opRight_sol;
+
+                if (m < 0) {
+                    [bound1, bound2] = [bound2, bound1]; // swap bounds
+                    opLeft_prob = opRight_sol === '<' ? '>' : '>='; // flip and swap operators
+                    opRight_prob = opLeft_sol === '<' ? '>' : '>=';
+                }
+                
+                problem.text = `${bound1} ${opLeft_prob} ${term} ${opRight_prob} ${bound2}`;
+                problem.correctLeftEndpoint = opLeft_sol === '<' ? 'open' : 'closed';
+                problem.correctRightEndpoint = opRight_sol === '<' ? 'open' : 'closed';
+                problem.correctShading = 'between';
+                const leftBracket = problem.correctLeftEndpoint === 'open' ? '(' : '[';
+                const rightBracket = problem.correctRightEndpoint === 'open' ? ')' : ']';
+                problem.correctInterval = `${leftBracket}${num1_sol}, ${num2_sol}${rightBracket}`;
+
+            } else { // disjunction
+                // Create two separate simple unsolved inequalities
+                const createPart = (num, direction) => {
+                    const op_sol = direction === 'left' 
+                        ? (Math.random() > 0.5 ? '<' : '<=')
+                        : (Math.random() > 0.5 ? '>' : '>=');
+                    const m = Math.random() > 0.5 ? 2 : -2;
+                    const d = Math.floor(Math.random() * 9) - 4;
+                    const term = `${m}x${d === 0 ? "" : (d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`)}`;
+                    const bound = m * num + d;
+                    let op_prob = op_sol;
+                    if (m < 0) {
+                        if (op_sol === '<') op_prob = '>'; else if (op_sol === '<=') op_prob = '>=';
+                        else if (op_sol === '>') op_prob = '<'; else if (op_sol === '>=') op_prob = '<=';
+                    }
+                    return { text: `${term} ${op_prob} ${bound}`, op_sol: op_sol };
+                };
+                
+                const part1 = createPart(num1_sol, 'left');
+                const part2 = createPart(num2_sol, 'right');
+                
+                problem.text = `${part1.text} or ${part2.text}`;
+                problem.correctSolved = `x ${part1.op_sol} ${num1_sol} or x ${part2.op_sol} ${num2_sol}`;
+                problem.correctLeftEndpoint = part1.op_sol.includes('<') ? 'open' : 'closed';
+                problem.correctRightEndpoint = part2.op_sol.includes('>') ? 'open' : 'closed';
+                problem.correctShading = 'outwards';
+                const leftBracket = problem.correctLeftEndpoint === 'open' ? ')' : ']';
+                const rightBracket = problem.correctRightEndpoint === 'open' ? '(' : '[';
+                problem.correctInterval = `(-Inf, ${num1_sol}${leftBracket} U ${rightBracket}${num2_sol}, Inf)`;
+            }
+            return problem;
+        }
+
+        function drawNumberLine() {
+            const min = -11; const max = 11;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const canvasWidth = canvas.clientWidth, canvasHeight = canvas.clientHeight, centerY = canvasHeight / 2;
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            const mapNumberToX = (num) => ((num - min) / (max - min)) * canvasWidth;
+            ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(canvasWidth, centerY);
+            ctx.strokeStyle = '#374151'; ctx.lineWidth = 2; ctx.stroke();
+            for (let i = min + 1; i < max; i++) {
+                const x = mapNumberToX(i);
+                ctx.beginPath(); ctx.moveTo(x, centerY - 5); ctx.lineTo(x, centerY + 5); ctx.stroke();
+                if (i % 2 === 0) {
+                    ctx.font = '12px Inter'; ctx.fillStyle = '#4b5563'; ctx.textAlign = 'center';
+                    ctx.fillText(i, x, centerY + 25);
+                }
+            }
+            drawUserSelections(mapNumberToX);
+        }
+
+        function drawUserSelections(mapNumberToX) {
+            const { num1, num2 } = currentInequality;
+            const x1 = mapNumberToX(num1); const x2 = mapNumberToX(num2); const centerY = canvas.clientHeight / 2;
+            if (userSelection.shading) {
+                ctx.fillStyle = 'rgba(79, 70, 229, 0.3)'; ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 3;
+                if (userSelection.shading === 'between') {
+                    ctx.fillRect(x1, centerY - 8, x2 - x1, 16);
+                    ctx.beginPath(); ctx.moveTo(x1, centerY); ctx.lineTo(x2, centerY); ctx.stroke();
+                } else if (userSelection.shading === 'outwards') {
+                    ctx.fillRect(0, centerY - 8, x1, 16); ctx.fillRect(x2, centerY - 8, canvas.clientWidth - x2, 16);
+                    ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(x1, centerY); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x2, centerY); ctx.lineTo(canvas.clientWidth, centerY); ctx.stroke();
+                }
+            }
+            const drawEndpoint = (x, type) => {
+                if (!type) return;
+                ctx.beginPath(); ctx.arc(x, centerY, 6, 0, 2 * Math.PI);
+                if (type === 'open') {
+                    ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2; ctx.fillStyle = 'white'; ctx.fill(); ctx.stroke();
+                } else { ctx.fillStyle = '#4f46e5'; ctx.fill(); }
+            };
+            drawEndpoint(x1, userSelection.leftEndpoint); drawEndpoint(x2, userSelection.rightEndpoint);
+        }
+        
+        function updateStreakDisplay() {
+            streakCountEl.textContent = streak;
+            streakCountEl.parentElement.classList.remove('streak-pop');
+            void streakCountEl.parentElement.offsetWidth;
+            streakCountEl.parentElement.classList.add('streak-pop');
+        }
+
+        function setupNewQuestion() {
+            currentInequality = generateInequality();
+            problemDisplay.textContent = currentInequality.text;
+            userSelection = { leftEndpoint: null, rightEndpoint: null, shading: null };
+            solvedInput.value = ''; intervalInput.value = '';
+            feedbackEl.textContent = ''; feedbackEl.className = 'h-8 mb-4 text-center text-xl font-semibold';
+            checkBtn.style.display = 'inline-block'; nextBtn.style.display = 'none';
+            solvedInput.disabled = false; intervalInput.disabled = false;
+            Object.values(buttons).forEach(btn => btn.classList.remove('btn-selected'));
+            drawNumberLine();
+        }
+        
+        function checkAnswer() {
+            const format = (str) => str.replace(/\s/g, '').replace(/inf/gi, 'Inf');
+            const isSolvedCorrect = format(solvedInput.value) === format(currentInequality.correctSolved);
+            const isGraphCorrect = userSelection.leftEndpoint === currentInequality.correctLeftEndpoint &&
+                                 userSelection.rightEndpoint === currentInequality.correctRightEndpoint &&
+                                 userSelection.shading === currentInequality.correctShading;
+            const isIntervalCorrect = format(intervalInput.value) === format(currentInequality.correctInterval);
+            
+            if (isSolvedCorrect && isGraphCorrect && isIntervalCorrect) {
+                streak++;
+                feedbackEl.textContent = 'Correct! Excellent work!';
+                feedbackEl.className += ' text-green-600 feedback-correct';
+                checkBtn.style.display = 'none'; nextBtn.style.display = 'inline-block';
+                solvedInput.disabled = true; intervalInput.disabled = true;
+            } else {
+                streak = 0;
+                let errors = [];
+                if (!isSolvedCorrect) errors.push("The solved inequality is incorrect.");
+                if (!isGraphCorrect) errors.push("The graph is not quite right.");
+                if (!isIntervalCorrect) errors.push("Check the interval notation.");
+                feedbackEl.textContent = errors.join(' ');
+                feedbackEl.className += ' text-red-600 feedback-incorrect';
+            }
+            updateStreakDisplay();
+        }
+        
+        buttons.leftOpen.addEventListener('click', () => { userSelection.leftEndpoint = 'open'; buttons.leftOpen.classList.add('btn-selected'); buttons.leftClosed.classList.remove('btn-selected'); drawNumberLine(); });
+        buttons.leftClosed.addEventListener('click', () => { userSelection.leftEndpoint = 'closed'; buttons.leftClosed.classList.add('btn-selected'); buttons.leftOpen.classList.remove('btn-selected'); drawNumberLine(); });
+        buttons.rightOpen.addEventListener('click', () => { userSelection.rightEndpoint = 'open'; buttons.rightOpen.classList.add('btn-selected'); buttons.rightClosed.classList.remove('btn-selected'); drawNumberLine(); });
+        buttons.rightClosed.addEventListener('click', () => { userSelection.rightEndpoint = 'closed'; buttons.rightClosed.classList.add('btn-selected'); buttons.rightOpen.classList.remove('btn-selected'); drawNumberLine(); });
+        buttons.shadeBetween.addEventListener('click', () => { userSelection.shading = 'between'; buttons.shadeBetween.classList.add('btn-selected'); buttons.shadeOutwards.classList.remove('btn-selected'); drawNumberLine(); });
+        buttons.shadeOutwards.addEventListener('click', () => { userSelection.shading = 'outwards'; buttons.shadeOutwards.classList.add('btn-selected'); buttons.shadeBetween.classList.remove('btn-selected'); drawNumberLine(); });
+        checkBtn.addEventListener('click', checkAnswer);
+        nextBtn.addEventListener('click', setupNewQuestion);
+        window.addEventListener('resize', drawNumberLine);
+        setupNewQuestion();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplifying Radicals Practice</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for correct/incorrect feedback */
+        .correct-answer {
+            border: 2px solid #22c55e; /* green-500 */
+            background-color: #f0fdf4; /* green-50 */
+        }
+        .incorrect-answer {
+            border: 2px solid #ef4444; /* red-500 */
+            background-color: #fef2f2; /* red-50 */
+        }
+        .correct-text {
+            color: #166534; /* green-800 */
+            font-weight: 600;
+        }
+        .incorrect-text {
+            color: #991b1b; /* red-800 */
+            font-weight: 600;
+        }
+        /* Style for the problem display */
+        .problem-display {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 2rem; /* 32px */
+            letter-spacing: 1px;
+            font-weight: 600;
+            padding: 1rem;
+            background-color: #f9fafb; /* gray-50 */
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db; /* gray-300 */
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1f2937; /* gray-800 */
+            flex-wrap: wrap; 
+        }
+        .radicand {
+            border-top: 2px solid #1f2937;
+            padding-left: 4px;
+        }
+        /* Style for input fields */
+        .profile-input {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            text-align: left;
+            font-family: 'Menlo', 'Courier New', monospace;
+        }
+        .problem-fieldset {
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .problem-legend {
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0 0.5rem;
+            color: #1f2937; /* gray-800 */
+        }
+        /* Symbol keyboard */
+        .symbol-keyboard {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .symbol-btn {
+            font-family: 'Menlo', 'Courier New', monospace;
+            font-size: 1.25rem;
+            font-weight: bold;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .symbol-btn:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+    <!-- Import Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-2xl w-full">
+        <!-- Header -->
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Simplifying Radicals</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Simplify both radicals to score a point!</p>
+            <!-- Game Stats: Lives and Score -->
+            <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
+                <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
+                <div id="score-counter" class="text-blue-600">Score: 0</div>
+            </div>
+        </header>
+
+        <!-- Quiz Card -->
+        <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+            <!-- Symbol Keyboard -->
+            <div class="symbol-keyboard">
+                <button class="symbol-btn" data-symbol="√">√</button>
+                <button class="symbol-btn" data-symbol="x">x</button>
+                <button class="symbol-btn" data-symbol="y">y</button>
+                <button class="symbol-btn" data-symbol="z">z</button>
+                <button class="symbol-btn" data-symbol="^">^</button>
+                <button class="symbol-btn" data-symbol="-">-</button>
+            </div>
+            
+            <!-- Questions Grid -->
+            <div class="border-t border-gray-200 pt-6">
+                <!-- Problem 1: Numbers Only -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">Problem 1 (Numbers Only)</legend>
+                    <div id="poly-1-display" class="problem-display my-2">&radic;<span class="radicand">48</span></div>
+                    <input type="text" id="poly-1-input" class="profile-input" placeholder="e.g., 4√3">
+                </fieldset>
+                
+                <!-- Problem 2: With Variables -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">Problem 2 (With Variables)</legend>
+                    <div id="poly-2-display" class="problem-display my-2">&radic;<span class="radicand">12x<sup>3</sup>y<sup>4</sup>z<sup>5</sup></span></div>
+                    <input type="text" id="poly-2-input" class="profile-input" placeholder="e.g., 2x^2z√3y">
+                </fieldset>
+            </div>
+
+            <!-- Feedback Area -->
+            <div id="feedback-area" class="text-center h-6 mt-6">
+                <!-- Feedback will be injected here -->
+            </div>
+
+            <!-- Button Area -->
+            <div class="mt-6">
+                <button id="check-btn" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md">
+                    Check Answer
+                </button>
+                <button id="next-btn" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-md hidden">
+                    Next Question
+                </button>
+                <button id="restart-btn" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors shadow-md mt-4 hidden">
+                    Restart Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const livesCounter = document.getElementById('lives-counter');
+        const scoreCounter = document.getElementById('score-counter');
+        
+        const poly1Display = document.getElementById('poly-1-display');
+        const poly1Input = document.getElementById('poly-1-input');
+        const poly2Display = document.getElementById('poly-2-display');
+        const poly2Input = document.getElementById('poly-2-input');
+        
+        const allInputs = [poly1Input, poly2Input];
+        const keyboard = document.querySelector('.symbol-keyboard');
+
+        const feedbackArea = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // --- Game State ---
+        let lives = 3;
+        let score = 0;
+        let isGameOver = false;
+        let currentProblem = {};
+        let lastFocusedInput = poly1Input;
+
+        // --- Helper Functions ---
+        function getRandomInt(min, max, exclude = []) {
+            let num;
+            do {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                num = Math.floor(Math.random() * (max - min + 1)) + min;
+            } while (exclude.includes(num));
+            return num;
+        }
+
+        function updateStatsDisplay() {
+            livesCounter.innerHTML = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+            scoreCounter.innerHTML = `Score: ${score}`;
+        }
+
+        /**
+         * Formats a term object {c, x, y, z} into an HTML string
+         */
+        function formatTermHTML(c, x, y, z) {
+            let html = "";
+            
+            // Handle coefficient
+            if (c === -1) {
+                html += "-";
+            } else if (c !== 1 || (x === 0 && y === 0 && z === 0)) {
+                html += c;
+            }
+
+            // Handle variables
+            if (x === 1) html += "x";
+            if (x > 1) html += `x<sup>${x}</sup>`;
+            if (y === 1) html += "y";
+            if (y > 1) html += `y<sup>${y}</sup>`;
+            if (z === 1) html += "z";
+            if (z > 1) html += `z<sup>${z}</sup>`;
+            
+            return html;
+        }
+
+        /**
+         * Formats a term object {c, x, y, z} into a canonical answer string
+         * e.g., 8, 9, 6, 9 -> "8x^9y^6z^9"
+         */
+        function formatTermCanonical(c, x, y, z) {
+            let result = "";
+            
+            // Handle coefficient
+            if (c === -1) {
+                result = "-";
+            } else if (c !== 1 || (x === 0 && y === 0 && z === 0)) {
+                result += c;
+            }
+
+            // Handle variables
+            if (x === 1) result += "x";
+            if (x > 1) result += `x^${x}`;
+            if (y === 1) result += "y";
+            if (y > 1) result += `y^${y}`;
+            if (z === 1) result += "z";
+            if (z > 1) result += `z^${z}`;
+
+            return result;
+        }
+
+        /**
+         * Normalizes a single term (no radical)
+         * e.g., " 8y^6x^9z^3 " -> "8x^9y^6z^3"
+         */
+        function normalizeTerm(termStr) {
+            if (!termStr) return "";
+            
+            let normStr = termStr.replace(/\s/g, '').toLowerCase();
+            
+            // Add ^1 to any variable without an exponent
+            normStr = normStr.replace(/([xyz])(?!\^)/g, '$1^1');
+            
+            // Find coefficient
+            let coeffMatch = normStr.match(/^(-?\d+)/);
+            let coeff = 1;
+            if (coeffMatch) {
+                coeff = parseInt(coeffMatch[1], 10);
+            } else if (normStr.startsWith('-')) {
+                coeff = -1;
+            }
+
+            // Find exponents
+            const getExp = (variable) => {
+                const regex = new RegExp(`${variable}\\^(\\d+)`);
+                const match = normStr.match(regex);
+                return match ? parseInt(match[1], 10) : 0;
+            };
+            
+            const xExp = getExp('x');
+            const yExp = getExp('y');
+            const zExp = getExp('z');
+
+            // Rebuild canonical string
+            let result = "";
+            if (coeff === -1) {
+                result = "-";
+            } else if (coeff !== 1 || (xExp === 0 && yExp === 0 && zExp === 0)) {
+                result += coeff;
+            }
+
+            if (xExp === 1) result += "x";
+            if (xExp > 1) result += `x^${xExp}`;
+            if (yExp === 1) result += "y";
+            if (yExp > 1) result += `y^${yExp}`;
+            if (zExp === 1) result += "z";
+            if (zExp > 1) result += `z^${zExp}`;
+
+            return result;
+        }
+
+        /**
+         * Normalizes a full radical answer
+         * e.g., " 2x^2y√3xz " -> "2x^2y√3xz"
+         */
+        function normalizeAnswer(str) {
+            if (!str) return "";
+            
+            const parts = str.split('√');
+            
+            if (parts.length === 1) {
+                // No radical symbol, e.g., "5x"
+                return normalizeTerm(parts[0]);
+            }
+            
+            if (parts.length === 2) {
+                // e.g., "2x^2y" and "3xz"
+                const normOutside = normalizeTerm(parts[0]);
+                const normInside = normalizeTerm(parts[1]);
+                
+                // Handle case like √5 -> parts[0] is "", parts[1] is "5"
+                if (normOutside === "" && normInside === "") return "";
+                if (normOutside === "" && normInside !== "") return `√${normInside}`;
+                if (normInside === "") return normOutside; // Should not happen but good to handle
+
+                return `${normOutside}√${normInside}`;
+            }
+
+            return str; // Invalid format
+        }
+
+        // --- Problem Generation ---
+
+        function generateProblem1() {
+            const a = getRandomInt(2, 6); // Outside part
+            const b = getRandomInt(2, 7, [4]); // Inside part
+            const radicand = a * a * b;
+            
+            const display = `&radic;<span class="radicand">${radicand}</span>`;
+            const answer = normalizeAnswer(`${a}√${b}`);
+            
+            return { display, answer: [answer] };
+        }
+
+        function generateProblem2() {
+            // Generate coefficient
+            const a = getRandomInt(2, 5); // Outside coeff
+            const b = getRandomInt(2, 5, [4]); // Inside coeff
+            const C = a * a * b;
+
+            // Generate exponents
+            const X = getRandomInt(2, 7);
+            const Y = getRandomInt(2, 7);
+            const Z = getRandomInt(2, 7);
+            
+            const display = `&radic;<span class="radicand">${formatTermHTML(C, X, Y, Z)}</span>`;
+
+            // Calculate answer
+            const C_out = a;
+            const C_in = b;
+            
+            const x_out = Math.floor(X / 2);
+            const x_in = X % 2;
+            
+            const y_out = Math.floor(Y / 2);
+            const y_in = Y % 2;
+
+            const z_out = Math.floor(Z / 2);
+            const z_in = Z % 2;
+
+            const outsideStr = formatTermCanonical(C_out, x_out, y_out, z_out);
+            const insideStr = formatTermCanonical(C_in, x_in, y_in, z_in);
+
+            const answer = normalizeAnswer(`${outsideStr}√${insideStr}`);
+            
+            return { display, answer: [answer] };
+        }
+
+
+        // --- Game Flow ---
+        function startNewProblem() {
+            if (isGameOver) return;
+            
+            currentProblem = {}; // Reset problem
+            
+            const prob1 = generateProblem1();
+            const prob2 = generateProblem2();
+
+            currentProblem.prob1 = prob1;
+            currentProblem.prob2 = prob2;
+
+            poly1Display.innerHTML = prob1.display;
+            poly2Display.innerHTML = prob2.display;
+            
+            // Reset UI
+            for (const input of allInputs) {
+                input.value = "";
+                input.disabled = false;
+                input.classList.remove('correct-answer', 'incorrect-answer');
+            }
+            feedbackArea.innerHTML = "";
+            checkBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+        }
+
+        /**
+         * Checks a single problem, styles the input, and returns true/false
+         */
+        function checkProblem(inputEl, problem) {
+            const userInputNorm = normalizeAnswer(inputEl.value);
+            const correctAnswersNorm = problem.answer.map(ans => normalizeAnswer(ans));
+
+            if (correctAnswersNorm.includes(userInputNorm)) {
+                inputEl.classList.add('correct-answer');
+                inputEl.classList.remove('incorrect-answer');
+                return true;
+            } else {
+                inputEl.classList.add('incorrect-answer');
+                inputEl.classList.remove('correct-answer');
+                return false;
+            }
+        }
+
+        function checkAnswer() {
+            const p1Correct = checkProblem(poly1Input, currentProblem.prob1);
+            const p2Correct = checkProblem(poly2Input, currentProblem.prob2);
+            
+            const allCorrect = p1Correct && p2Correct;
+
+            // Handle results
+            if (allCorrect) {
+                score++;
+                updateStatsDisplay();
+                feedbackArea.innerHTML = `<p class="correct-text">Correct! Great job!</p>`;
+                for (const input of allInputs) {
+                    input.disabled = true;
+                }
+                checkBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                lives--;
+                updateStatsDisplay();
+                if (lives <= 0) {
+                    isGameOver = true;
+                    feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
+                    for (const input of allInputs) {
+                        input.disabled = true;
+                    }
+                    checkBtn.classList.add('hidden');
+                    restartBtn.classList.remove('hidden');
+                    // Show correct answers
+                    if (!p1Correct) poly1Input.value = currentProblem.prob1.answer[0];
+                    if (!p2Correct) poly2Input.value = currentProblem.prob2.answer[0];
+                } else {
+                    feedbackArea.innerHTML = `<p class="incorrect-text">Not quite. Fix the red boxes and try again.</p>`;
+                }
+            }
+        }
+
+        function handleRestart() {
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            updateStatsDisplay();
+            restartBtn.classList.add('hidden');
+            startNewProblem();
+        }
+
+        // --- Event Listeners ---
+        checkBtn.addEventListener('click', checkAnswer);
+        nextBtn.addEventListener('click', startNewProblem);
+        restartBtn.addEventListener('click', handleRestart);
+
+        for (const input of allInputs) {
+            input.addEventListener('focus', () => {
+                lastFocusedInput = input;
+            });
+        }
+
+        keyboard.addEventListener('click', (e) => {
+            if (e.target.classList.contains('symbol-btn')) {
+                const symbol = e.target.dataset.symbol;
+                if (lastFocusedInput) {
+                    lastFocusedInput.value += symbol;
+                    lastFocusedInput.focus();
+                }
+            }
+        });
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatsDisplay();
+            startNewProblem();
+        });
+    </script>
+</body>
+</html>

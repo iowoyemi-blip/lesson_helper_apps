@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphing Systems of Linear Inequalities</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .correct-text {
+            color: #166534; /* green-800 */
+            font-weight: 600;
+        }
+        .incorrect-text {
+            color: #991b1b; /* red-800 */
+            font-weight: 600;
+        }
+        /* Style for the graph */
+        .graph-container {
+            width: 100%;
+            max-width: 480px; /* 480/16 = 30px per grid */
+            margin: 0 auto;
+            position: relative;
+            aspect-ratio: 1 / 1; /* Keep it square */
+            border: 1px solid #ccc;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: crosshair;
+        }
+        .graph-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Keep shade inside */
+            /* This makes the overlaps look correct */
+            mix-blend-mode: multiply;
+        }
+        .grid-line {
+            stroke: #e5e7eb; /* Light gray */
+            stroke-width: 1;
+        }
+        .axis-line {
+            stroke: #4b5563; /* Darker gray */
+            stroke-width: 2;
+        }
+        .axis-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            fill: #4b5563;
+        }
+        /* Student-drawn elements */
+        .student-point {
+            stroke: #ffffff;
+            stroke-width: 2;
+        }
+        .student-point-1 { fill: #2563eb; } /* Blue */
+        .student-point-2 { fill: #db2777; } /* Pink/Red */
+
+        .student-line {
+            stroke-width: 3;
+        }
+        .student-line-1 { stroke: #2563eb; }
+        .student-line-2 { stroke: #db2777; }
+        .student-line-dashed {
+            stroke-dasharray: 5 5;
+        }
+        /* Two different shade colors */
+        .shade-region-1 {
+            fill: #2563eb; /* blue-600 */
+            opacity: 0.3;
+        }
+        .shade-region-2 {
+            fill: #db2777; /* pink-600 */
+            opacity: 0.3;
+        }
+        
+        /* Correct answer styling */
+        .correct-line {
+            stroke: #16a34a; /* green-600 */
+            stroke-width: 4;
+        }
+        .correct-line-dashed {
+            stroke-dasharray: 6 6;
+        }
+        .correct-shade-1 {
+            fill: #16a34a; /* green-600 */
+            opacity: 0.2;
+        }
+        .correct-shade-2 {
+            fill: #059669; /* emerald-600 */
+            opacity: 0.2;
+        }
+
+        /* Style for line style buttons */
+        .style-btn {
+            background-color: #f3f4f6; /* gray-100 */
+            border: 2px solid #d1d5db; /* gray-300 */
+            color: #374151; /* gray-700 */
+        }
+        .style-btn-active {
+            background-color: #dbeafe; /* blue-100 */
+            border: 2px solid #3b82f6; /* blue-500 */
+            color: #1e40af; /* blue-800 */
+            font-weight: 600;
+        }
+    </style>
+    <!-- Import Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-xl w-full">
+        <!-- Header -->
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Graphing Systems of Inequalities</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Graph both inequalities step-by-step</p>
+            <!-- Game Stats: Lives and Score -->
+            <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
+                <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
+                <div id="score-counter" class="text-blue-600">Score: 0</div>
+            </div>
+        </header>
+
+        <!-- Quiz Card -->
+        <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+            <!-- Equations to Graph -->
+            <div class="text-center">
+                <p class="text-lg text-gray-600">Graph the following system:</p>
+                <p id="equation-display-1" class="text-3xl font-bold text-blue-600 my-2" style="font-family: 'Times New Roman', Times, serif;">y &lt; 2x + 1</p>
+                <p id="equation-display-2" class="text-3xl font-bold text-pink-600 my-2" style="font-family: 'Times New Roman', Times, serif;">y &ge; -x + 3</p>
+                <p id="instruction-text" class="text-lg text-gray-700 font-semibold h-6 mt-4">Inequality 1: Click the y-intercept.</p>
+            </div>
+
+            <!-- Graph Area -->
+            <div class="my-4">
+                <div class="graph-container" id="graph-container">
+                    <svg id="svg-grid" viewBox="0 0 480 480"></svg>
+                </div>
+            </div>
+            
+            <!-- Feedback Area -->
+            <div id="feedback-area" class="text-center h-12 mb-4">
+                <!-- Feedback will be injected here -->
+            </div>
+
+            <!-- Button Area -->
+            <!-- Step 3: Line Style Picker -->
+            <div id="style-picker" class="grid grid-cols-2 gap-4 mb-4 hidden">
+                <button id="solid-btn" class="style-btn w-full px-6 py-3 rounded-lg font-semibold text-lg transition-colors shadow-sm">Solid Line (—)</button>
+                <button id="dashed-btn" class="style-btn w-full px-6 py-3 rounded-lg font-semibold text-lg transition-colors shadow-sm">Dashed Line (---)</button>
+            </div>
+
+            <!-- Main Control Buttons -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="reset-btn" class="w-full bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-gray-600 transition-colors shadow-md hidden col-span-2">
+                    Reset Graph
+                </button>
+                <button id="check-btn" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md hidden col-span-2">
+                    Check Answer
+                </button>
+                <button id="next-btn" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-md hidden col-span-2">
+                    Next Question
+                </button>
+                <button id="restart-btn" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors shadow-md hidden col-span-2">
+                    Restart Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const graphContainer = document.getElementById('graph-container');
+        const svgGrid = document.getElementById('svg-grid');
+        const eqDisplay1 = document.getElementById('equation-display-1');
+        const eqDisplay2 = document.getElementById('equation-display-2');
+        const instructionText = document.getElementById('instruction-text');
+        const feedbackArea = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const stylePicker = document.getElementById('style-picker');
+        const solidBtn = document.getElementById('solid-btn');
+        const dashedBtn = document.getElementById('dashed-btn');
+        const livesCounter = document.getElementById('lives-counter');
+        const scoreCounter = document.getElementById('score-counter');
+
+        // --- Game State ---
+        let lives = 3;
+        let score = 0;
+        let isGameOver = false;
+        let currentSystem = { eq1: {}, eq2: {} };
+        let userInput = { eq1: {}, eq2: {} };
+        let currentStep = 'eq1_p1';
+        let nextEquationType = 'slopeIntercept';
+
+        // --- Graphing Constants ---
+        const SVG_SIZE = 480;
+        const GRID_RANGE = 8;
+        const NUM_GRIDS = GRID_RANGE * 2;
+        const GRID_SIZE = SVG_SIZE / NUM_GRIDS;
+        const MID = SVG_SIZE / 2;
+
+        // --- Helper: Get Random Integer ---
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // --- Helper: Update Stats Display ---
+        function updateStatsDisplay() {
+            livesCounter.innerHTML = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+            scoreCounter.innerHTML = `Score: ${score}`;
+        }
+
+        // --- Coordinate Conversion ---
+        function toPixelCoords(cx, cy) {
+            return {
+                x: MID + (cx * GRID_SIZE),
+                y: MID - (cy * GRID_SIZE)
+            };
+        }
+
+        function toCartesianCoords(px, py) {
+            return {
+                x: Math.round((px - MID) / GRID_SIZE),
+                y: Math.round((MID - py) / GRID_SIZE)
+            };
+        }
+
+        // --- SVG Drawing ---
+        function createSvgGrid() {
+            svgGrid.innerHTML = ''; // Clear previous grid
+            for (let i = 0; i <= NUM_GRIDS; i++) {
+                let pos = i * GRID_SIZE;
+                let hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                hLine.setAttribute('x1', 0); hLine.setAttribute('y1', pos);
+                hLine.setAttribute('x2', SVG_SIZE); hLine.setAttribute('y2', pos);
+                hLine.classList.add('grid-line');
+                svgGrid.appendChild(hLine);
+                let vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                vLine.setAttribute('x1', pos); vLine.setAttribute('y1', 0);
+                vLine.setAttribute('x2', pos); vLine.setAttribute('y2', SVG_SIZE);
+                vLine.classList.add('grid-line');
+                svgGrid.appendChild(vLine);
+            }
+            let xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            xAxis.setAttribute('x1', 0); xAxis.setAttribute('y1', MID);
+            xAxis.setAttribute('x2', SVG_SIZE); xAxis.setAttribute('y2', MID);
+            xAxis.classList.add('axis-line');
+            svgGrid.appendChild(xAxis);
+            let yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            yAxis.setAttribute('x1', MID); yAxis.setAttribute('y1', 0);
+            yAxis.setAttribute('x2', MID); yAxis.setAttribute('y2', SVG_SIZE);
+            yAxis.classList.add('axis-line');
+            svgGrid.appendChild(yAxis);
+
+            function addLabel(x, y, text, align = 'middle', baseline = 'central') {
+                let label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', y);
+                label.setAttribute('text-anchor', align);
+                label.setAttribute('dominant-baseline', baseline);
+                label.textContent = text;
+                label.classList.add('axis-label');
+                svgGrid.appendChild(label);
+            }
+            for(let i = 1; i <= GRID_RANGE; i++) {
+                if (i % 2 === 0) {
+                    addLabel(MID + (i * GRID_SIZE), MID + 12, i); // +x
+                    addLabel(MID - (i * GRID_SIZE), MID + 12, -i); // -x
+                    addLabel(MID - 12, MID - (i * GRID_SIZE), i, 'end'); // +y
+                    addLabel(MID - 12, MID + (i * GRID_SIZE), -i, 'end'); // -y
+                }
+            }
+        }
+
+        function drawPoint(cx, cy, id, pointClass) {
+            const p = toPixelCoords(cx, cy);
+            let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('id', id);
+            circle.setAttribute('cx', p.x);
+            circle.setAttribute('cy', p.y);
+            circle.setAttribute('r', 5);
+            circle.classList.add('student-point', pointClass);
+            svgGrid.appendChild(circle);
+        }
+
+        function drawFullLine(m, b, id, lineClass) {
+            const x1 = -GRID_RANGE;
+            const y1 = m * x1 + b;
+            const x2 = GRID_RANGE;
+            const y2 = m * x2 + b;
+            const px1 = toPixelCoords(x1, y1);
+            const px2 = toPixelCoords(x2, y2);
+            
+            let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('id', id);
+            line.setAttribute('x1', px1.x);
+            line.setAttribute('y1', px1.y);
+            line.setAttribute('x2', px2.x);
+            line.setAttribute('y2', px2.y);
+            const classes = lineClass.split(' ');
+            line.classList.add(...classes);
+            svgGrid.appendChild(line);
+        }
+        
+        function drawShadeRegion(m, b, side, id, shadeClass) {
+            const eqNum = (id.includes('1')) ? 'eq1' : 'eq2';
+            const { A, B, C } = currentSystem[eqNum];
+            
+            let shadeAbove = false;
+            const testPoint = {x: 0, y: b + 1}; // Point 1 unit *above* y-intercept
+            const testVal = A * testPoint.x + B * testPoint.y;
+            const originVal = 0; // A*0 + B*0
+            const isTestPointOnOriginSide = (testVal - C) * (originVal - C) >= 0;
+
+            if (side === 'origin') {
+                shadeAbove = isTestPointOnOriginSide;
+            } else { // side === 'non-origin'
+                shadeAbove = !isTestPointOnOriginSide;
+            }
+
+            const p1 = toPixelCoords(-GRID_RANGE, m * -GRID_RANGE + b); // Line Left
+            const p2 = toPixelCoords(GRID_RANGE, m * GRID_RANGE + b); // Line Right
+            let c1, c2;
+
+            if (shadeAbove) {
+                c1 = toPixelCoords(-GRID_RANGE, GRID_RANGE); // Top-Left Corner
+                c2 = toPixelCoords(GRID_RANGE, GRID_RANGE); // Top-Right Corner
+            } else {
+                c1 = toPixelCoords(-GRID_RANGE, -GRID_RANGE); // Bottom-Left Corner
+                c2 = toPixelCoords(GRID_RANGE, -GRID_RANGE); // Bottom-Right Corner
+            }
+            
+            let polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            polygon.setAttribute('id', id);
+            polygon.setAttribute('points', `${p1.x},${p1.y} ${p2.x},${p2.y} ${c2.x},${c2.y} ${c1.x},${c1.y}`);
+            polygon.classList.add(shadeClass);
+            svgGrid.appendChild(polygon);
+        }
+
+        function clearStudentDrawings() {
+            const elements = [
+                'point-1-1', 'point-1-2', 'student-line-1', 'student-shade-1',
+                'point-2-1', 'point-2-2', 'student-line-2', 'student-shade-2',
+                'answer-line-1', 'answer-shade-1', 'answer-line-2', 'answer-shade-2'
+            ];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            });
+        }
+
+        // --- Problem Generation ---
+        function createInequality() {
+            let m, b;
+            do { m = getRandomInt(-3, 3); } while (m === 0);
+            b = getRandomInt(-5, 5);
+            
+            const inequalityTypes = ['<', '>', '≤', '≥'];
+            const inequalitySymbol = inequalityTypes[getRandomInt(0, 3)];
+            const isSolid = inequalitySymbol === '≤' || inequalitySymbol === '≥';
+            let A, B, C, displayHTML, checkSymbol;
+
+            if (nextEquationType === 'slopeIntercept') {
+                A = m; B = -1; C = -b;
+                
+                // We MUST flip the operator for the check
+                // y > mx + b  =>  mx - y < -b
+                if (inequalitySymbol === '>') checkSymbol = '<';
+                else if (inequalitySymbol === '<') checkSymbol = '>';
+                else if (inequalitySymbol === '≥') checkSymbol = '≤';
+                else if (inequalitySymbol === '≤') checkSymbol = '≥';
+                
+                let mStr = (m === 1) ? "x" : (m === -1) ? "-x" : `${m}x`;
+                let bStr = (b > 0) ? `+ ${b}` : (b < 0) ? `- ${Math.abs(b)}` : "";
+                displayHTML = `y ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${mStr} ${bStr}`;
+                nextEquationType = 'standardForm';
+            } else {
+                if (m > 0) { A = m; B = -1; C = -b; } 
+                else { A = -m; B = 1; C = b; }
+                
+                // This is already in Ax+By=C form, so the display symbol IS the check symbol.
+                // NO FLIP IS NEEDED. This was the bug.
+                checkSymbol = inequalitySymbol;
+
+                let A_str = (A === 1) ? "x" : `${A}x`;
+                let B_str = (B === 1) ? "+ y" : (B === -1) ? "- y" : (B > 0) ? `+ ${B}y` : `- ${Math.abs(B)}y`;
+                displayHTML = `${A_str} ${B_str} ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${C}`;
+                nextEquationType = 'slopeIntercept';
+            }
+
+            let equation = { m, b, A, B, C, isSolid, inequalitySymbol: checkSymbol, displayHTML };
+            
+            // This origin check logic now works for both forms
+            if (checkSymbol === '<') equation.isOriginSideCorrect = (0 < C);
+            if (checkSymbol === '>') equation.isOriginSideCorrect = (0 > C);
+            if (checkSymbol === '≤') equation.isOriginSideCorrect = (0 <= C);
+            if (checkSymbol === '≥') equation.isOriginSideCorrect = (0 >= C);
+            return equation;
+        }
+
+        function generateProblem() {
+            if (isGameOver) return;
+            let eq1 = createInequality();
+            let eq2 = createInequality();
+            // Ensure slopes are different
+            while (eq1.m === eq2.m) {
+                eq2 = createInequality();
+            }
+            currentSystem = { eq1, eq2 };
+            eqDisplay1.innerHTML = eq1.displayHTML;
+            eqDisplay2.innerHTML = eq2.displayHTML;
+            resetState();
+        }
+
+        // --- Game Logic ---
+        function getLineFromPoints(p1, p2) {
+            if (p1.x === p2.x) return { m: Infinity, b: undefined }; // Vertical
+            const m = (p2.y - p1.y) / (p2.x - p1.x);
+            const b = p1.y - m * p1.x;
+            return { m, b };
+        }
+
+        function handleGraphClick(event) {
+            const rect = svgGrid.getBoundingClientRect();
+            const px = event.clientX - rect.left;
+            const py = event.clientY - rect.top;
+            const p = toCartesianCoords(px, py);
+
+            switch(currentStep) {
+                case 'eq1_p1':
+                    userInput.eq1.p1 = p;
+                    drawPoint(p.x, p.y, 'point-1-1', 'student-point-1');
+                    instructionText.textContent = 'Inequality 1: Click a second point.';
+                    resetBtn.classList.remove('hidden');
+                    currentStep = 'eq1_p2';
+                    break;
+                case 'eq1_p2':
+                    if (p.x === userInput.eq1.p1.x && p.y === userInput.eq1.p1.y) return;
+                    userInput.eq1.p2 = p;
+                    drawPoint(p.x, p.y, 'point-1-2', 'student-point-1');
+                    instructionText.textContent = "Inequality 1: Choose the line style.";
+                    stylePicker.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'eq1_style';
+                    break;
+                case 'eq1_shade':
+                    const { A, B, C } = currentSystem.eq1;
+                    const clickVal1 = A * p.x + B * p.y;
+                    const originVal1 = 0;
+                    const isClickOnOriginSide1 = (clickVal1 - C) * (originVal1 - C) >= 0;
+                    userInput.eq1.shadeSide = isClickOnOriginSide1 ? 'origin' : 'non-origin';
+                    
+                    const { m: m1, b: b1 } = getLineFromPoints(userInput.eq1.p1, userInput.eq1.p2);
+                    drawShadeRegion(m1, b1, userInput.eq1.shadeSide, 'student-shade-1', 'shade-region-1');
+                    
+                    instructionText.textContent = "Inequality 2: Click the y-intercept.";
+                    currentStep = 'eq2_p1';
+                    break;
+                case 'eq2_p1':
+                    userInput.eq2.p1 = p;
+                    drawPoint(p.x, p.y, 'point-2-1', 'student-point-2');
+                    instructionText.textContent = 'Inequality 2: Click a second point.';
+                    currentStep = 'eq2_p2';
+                    break;
+                case 'eq2_p2':
+                    if (p.x === userInput.eq2.p1.x && p.y === userInput.eq2.p1.y) return;
+                    userInput.eq2.p2 = p;
+                    drawPoint(p.x, p.y, 'point-2-2', 'student-point-2');
+                    instructionText.textContent = "Inequality 2: Choose the line style.";
+                    stylePicker.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'eq2_style';
+                    break;
+                case 'eq2_shade':
+                    const { A: A2, B: B2, C: C2 } = currentSystem.eq2;
+                    const clickVal2 = A2 * p.x + B2 * p.y;
+                    const originVal2 = 0;
+                    const isClickOnOriginSide2 = (clickVal2 - C2) * (originVal2 - C2) >= 0;
+                    userInput.eq2.shadeSide = isClickOnOriginSide2 ? 'origin' : 'non-origin';
+                    
+                    const { m: m2, b: b2 } = getLineFromPoints(userInput.eq2.p1, userInput.eq2.p2);
+                    drawShadeRegion(m2, b2, userInput.eq2.shadeSide, 'student-shade-2', 'shade-region-2');
+                    
+                    instructionText.textContent = "Check your work!";
+                    checkBtn.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'check';
+                    break;
+            }
+        }
+
+        function handleStyleClick(style) {
+            if (currentStep === 'eq1_style') {
+                userInput.eq1.style = style;
+                const { m, b } = getLineFromPoints(userInput.eq1.p1, userInput.eq1.p2);
+                let lineClass = 'student-line student-line-1';
+                if (style === 'dashed') lineClass += ' student-line-dashed';
+                drawFullLine(m, b, 'student-line-1', lineClass);
+
+                instructionText.textContent = "Inequality 1: Click the correct region to shade.";
+                graphContainer.style.pointerEvents = 'auto';
+                stylePicker.classList.add('hidden');
+                currentStep = 'eq1_shade';
+            } else if (currentStep === 'eq2_style') {
+                userInput.eq2.style = style;
+                const { m, b } = getLineFromPoints(userInput.eq2.p1, userInput.eq2.p2);
+                let lineClass = 'student-line student-line-2';
+                if (style === 'dashed') lineClass += ' student-line-dashed';
+                drawFullLine(m, b, 'student-line-2', lineClass);
+
+                instructionText.textContent = "Inequality 2: Click the correct region to shade.";
+                graphContainer.style.pointerEvents = 'auto';
+                stylePicker.classList.add('hidden');
+                currentStep = 'eq2_shade';
+            }
+            solidBtn.classList.remove('style-btn-active');
+            dashedBtn.classList.remove('style-btn-active');
+        }
+
+        function resetState() {
+            userInput = { eq1: {}, eq2: {} };
+            currentStep = 'eq1_p1';
+            clearStudentDrawings();
+            
+            graphContainer.style.pointerEvents = 'auto';
+            instructionText.textContent = 'Inequality 1: Click the y-intercept.';
+            feedbackArea.innerHTML = '';
+            
+            checkBtn.classList.add('hidden');
+            resetBtn.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            stylePicker.classList.add('hidden');
+            solidBtn.classList.remove('style-btn-active');
+            dashedBtn.classList.remove('style-btn-active');
+        }
+
+        function checkAnswer() {
+            const { eq1, eq2 } = currentSystem;
+            const { eq1: in1, eq2: in2 } = userInput;
+            
+            // Check 1: Eq1 Line
+            const isEq1Intercept = (in1.p1.x === 0 && in1.p1.y === eq1.b);
+            const isEq1Slope = Math.abs(in1.p2.y - (eq1.m * in1.p2.x + eq1.b)) < 0.001;
+            // Check 2: Eq1 Style
+            const isEq1Style = (in1.style === (eq1.isSolid ? 'solid' : 'dashed'));
+            // Check 3: Eq1 Shade
+            const isEq1Shade = (in1.shadeSide === 'origin') === eq1.isOriginSideCorrect;
+
+            // Check 4: Eq2 Line
+            const isEq2Intercept = (in2.p1.x === 0 && in2.p1.y === eq2.b);
+            const isEq2Slope = Math.abs(in2.p2.y - (eq2.m * in2.p2.x + eq2.b)) < 0.001;
+            // Check 5: Eq2 Style
+            const isEq2Style = (in2.style === (eq2.isSolid ? 'solid' : 'dashed'));
+            // Check 6: Eq2 Shade
+            const isEq2Shade = (in2.shadeSide === 'origin') === eq2.isOriginSideCorrect;
+
+            const isAllCorrect = isEq1Intercept && isEq1Slope && isEq1Style && isEq1Shade &&
+                               isEq2Intercept && isEq2Slope && isEq2Style && isEq2Shade;
+
+            checkBtn.classList.add('hidden');
+            resetBtn.classList.add('hidden');
+
+            if (isAllCorrect) {
+                score++;
+                updateStatsDisplay();
+                feedbackArea.innerHTML = `<p class="correct-text">Correct! Great job!</p>`;
+                
+                // Draw correct answer
+                clearStudentDrawings();
+                let cl1 = eq1.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                let cs1 = eq1.isOriginSideCorrect ? 'origin' : 'non-origin';
+                drawFullLine(eq1.m, eq1.b, 'answer-line-1', cl1);
+                drawShadeRegion(eq1.m, eq1.b, cs1, 'answer-shade-1', 'correct-shade-1');
+                
+                let cl2 = eq2.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                let cs2 = eq2.isOriginSideCorrect ? 'origin' : 'non-origin';
+                drawFullLine(eq2.m, eq2.b, 'answer-line-2', cl2);
+                drawShadeRegion(eq2.m, eq2.b, cs2, 'answer-shade-2', 'correct-shade-2');
+                
+                nextBtn.classList.remove('hidden');
+            } else {
+                lives--;
+                updateStatsDisplay();
+                let errorMsgs = [];
+                if (!isEq1Intercept || !isEq1Slope) errorMsgs.push("Inequality 1's boundary line is incorrect.");
+                if (!isEq1Style) errorMsgs.push(`Inequality 1's line style is wrong.`);
+                if (!isEq1Shade) errorMsgs.push("Inequality 1's shading is wrong.");
+                if (!isEq2Intercept || !isEq2Slope) errorMsgs.push("Inequality 2's boundary line is incorrect.");
+                if (!isEq2Style) errorMsgs.push(`Inequality 2's line style is wrong.`);
+                if (!isEq2Shade) errorMsgs.push("Inequality 2's shading is wrong.");
+                
+                if (lives <= 0) {
+                    isGameOver = true;
+                    feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
+                    // Show the correct answer
+                    clearStudentDrawings();
+                    let cl1 = eq1.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                    let cs1 = eq1.isOriginSideCorrect ? 'origin' : 'non-origin';
+                    drawFullLine(eq1.m, eq1.b, 'answer-line-1', cl1);
+                    drawShadeRegion(eq1.m, eq1.b, cs1, 'answer-shade-1', 'correct-shade-1');
+                    
+                    let cl2 = eq2.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                    let cs2 = eq2.isOriginSideCorrect ? 'origin' : 'non-origin';
+                    drawFullLine(eq2.m, eq2.b, 'answer-line-2', cl2);
+                    drawShadeRegion(eq2.m, eq2.b, cs2, 'answer-shade-2', 'correct-shade-2');
+                    restartBtn.classList.remove('hidden');
+                } else {
+                    feedbackArea.innerHTML = `<p class="incorrect-text">${errorMsgs.length > 0 ? errorMsgs[0] : 'Something is not correct.'} Try again!</p>`;
+                    resetBtn.classList.remove('hidden');
+                    resetBtn.classList.add('col-span-2');
+                }
+            }
+        }
+
+        function handleRestart() {
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            updateStatsDisplay();
+            restartBtn.classList.add('hidden');
+            generateProblem();
+        }
+
+        // --- Event Listeners ---
+        svgGrid.addEventListener('click', handleGraphClick);
+        solidBtn.addEventListener('click', () => handleStyleClick('solid'));
+        dashedBtn.addEventListener('click', () => handleStyleClick('dashed'));
+        checkBtn.addEventListener('click', checkAnswer);
+        resetBtn.addEventListener('click', () => {
+             resetState();
+             instructionText.textContent = 'Inequality 1: Click the y-intercept.';
+        });
+        nextBtn.addEventListener('click', generateProblem);
+        restartBtn.addEventListener('click', handleRestart);
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            createSvgGrid();
+            generateProblem();
+            updateStatsDisplay();
+        });
+    </script>
+</body>
+</html>

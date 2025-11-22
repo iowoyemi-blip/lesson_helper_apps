@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Step Inequality Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .feedback-correct {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .feedback-incorrect {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        /* Custom styles for selected buttons */
+        .btn-selected {
+            background-color: #4f46e5 !important; /* A strong indigo for selected state */
+            color: white !important;
+            border-color: #4f46e5 !important;
+        }
+        .streak-pop {
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8 m-4 relative">
+        
+        <header class="text-center mb-6">
+            <div id="streak-container" class="absolute top-4 right-4 text-center">
+                 <span class="text-sm font-semibold text-white bg-green-500 rounded-full px-3 py-1 shadow-md">Streak: <span id="streak-count">0</span></span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">Multi-Step Inequality Practice</h1>
+            <p class="text-gray-600 mt-1">First, solve the inequality. Then, graph the solution and write it in interval notation.</p>
+        </header>
+
+        <!-- Problem Display -->
+        <div class="bg-indigo-600 text-white rounded-lg p-4 mb-6 text-center shadow-md">
+            <p class="text-2xl font-mono" id="inequality-problem"></p>
+        </div>
+
+        <!-- Solved Inequality Input -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">1. Solve the Inequality</h3>
+            <label for="solved-inequality" class="font-medium text-gray-600 mb-2 block sr-only">Solved Inequality:</label>
+            <input type="text" id="solved-inequality" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg text-center" placeholder="e.g., x < 5">
+            <p class="text-xs text-gray-500 mt-2 text-center">Keep the variable 'x' on the left side.</p>
+        </div>
+
+
+        <!-- Interactive Number Line -->
+        <div class="mb-6">
+            <canvas id="number-line-canvas" class="w-full h-24 cursor-pointer rounded-md bg-gray-50 border border-gray-200"></canvas>
+        </div>
+        
+        <!-- Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Endpoint and Shading Controls -->
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">2. Build the Graph</h3>
+                <div class="space-y-4">
+                     <div>
+                        <label class="font-medium text-gray-600 mb-2 block">Endpoint Type:</label>
+                        <div class="flex space-x-2">
+                           <button id="open-circle-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">Open Circle ( )</button>
+                           <button id="closed-circle-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">Closed Circle [ ]</button>
+                        </div>
+                    </div>
+                     <div>
+                        <label class="font-medium text-gray-600 mb-2 block">Shading Direction:</label>
+                        <div class="flex space-x-2">
+                           <button id="shade-left-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">Shade Left (&lt;)</button>
+                           <button id="shade-right-btn" class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">Shade Right (&gt;)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interval Notation Input -->
+            <div>
+                 <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">3. Write the Interval</h3>
+                <div class="h-full flex flex-col justify-center">
+                    <label for="interval-notation" class="font-medium text-gray-600 mb-2 block">Interval Notation:</label>
+                    <input type="text" id="interval-notation" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg" placeholder="e.g., (-5, Infinity)">
+                    <p class="text-xs text-gray-500 mt-2">Use "Infinity" for &infin;.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons and Feedback -->
+        <div class="mt-8">
+            <div id="feedback" class="h-8 mb-4 text-center text-xl font-semibold"></div>
+            <div class="flex justify-center space-x-4">
+                <button id="check-btn" class="bg-indigo-500 text-white font-bold py-2 px-8 rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Check Answer</button>
+                <button id="next-btn" class="bg-gray-700 text-white font-bold py-2 px-8 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-transform transform hover:scale-105" style="display: none;">Next Question</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('number-line-canvas');
+        const ctx = canvas.getContext('2d');
+        const problemDisplay = document.getElementById('inequality-problem');
+        const solvedInput = document.getElementById('solved-inequality');
+        const intervalInput = document.getElementById('interval-notation');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedbackEl = document.getElementById('feedback');
+        const streakCountEl = document.getElementById('streak-count');
+        
+        const openCircleBtn = document.getElementById('open-circle-btn');
+        const closedCircleBtn = document.getElementById('closed-circle-btn');
+        const shadeLeftBtn = document.getElementById('shade-left-btn');
+        const shadeRightBtn = document.getElementById('shade-right-btn');
+        
+        let currentInequality = {};
+        let userSelection = {
+            endpoint: null, // 'open' or 'closed'
+            shading: null, // 'left' or 'right'
+        };
+        let streak = 0;
+
+        // --- Inequality Generation ---
+        function generateInequality() {
+            const operators = ['<', '>', '<=', '>='];
+            const baseOperator = operators[Math.floor(Math.random() * operators.length)];
+            const solutionNumber = Math.floor(Math.random() * 15) - 7; // Solution will be between -7 and 7
+
+            let a;
+            do {
+                a = Math.floor(Math.random() * 9) - 4; // Coefficient 'a' from -4 to 4
+            } while (a === 0 || a === 1); // 'a' cannot be 0 or 1 to ensure a multi-step problem
+
+            const b = Math.floor(Math.random() * 21) - 10; // Term 'b' from -10 to 10
+            const c = a * solutionNumber + b;
+
+            let problemOperator = baseOperator;
+            // If we multiplied by a negative 'a', the original inequality sign must be flipped for the problem
+            if (a < 0) {
+                if (baseOperator === '<') problemOperator = '>';
+                else if (baseOperator === '>') problemOperator = '<';
+                else if (baseOperator === '<=') problemOperator = '>=';
+                else if (baseOperator === '>=') problemOperator = '<=';
+            }
+
+            // Create the problem string with nice formatting for 'b'
+            const b_display = b === 0 ? "" : (b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`);
+            const problemText = `${a}x${b_display} ${problemOperator} ${c}`;
+            
+            // The correct answers are based on the *solved* inequality (baseOperator and solutionNumber)
+            let correctEndpoint, correctShading, correctInterval;
+            const correctSolved = `x ${baseOperator} ${solutionNumber}`;
+
+            if (baseOperator === '<' || baseOperator === '>') {
+                correctEndpoint = 'open';
+            } else {
+                correctEndpoint = 'closed';
+            }
+
+            if (baseOperator === '<' || baseOperator === '<=') {
+                correctShading = 'left';
+                correctInterval = `(-Infinity, ${solutionNumber}${correctEndpoint === 'open' ? ')' : ']'}`;
+            } else {
+                correctShading = 'right';
+                correctInterval = `${correctEndpoint === 'open' ? '(' : '['}${solutionNumber}, Infinity)`;
+            }
+
+            return {
+                text: problemText,
+                number: solutionNumber, // This is the boundary number for the graph
+                operator: baseOperator, // The operator for the solved inequality
+                correctSolved: correctSolved,
+                correctEndpoint: correctEndpoint,
+                correctShading: correctShading,
+                correctInterval: correctInterval
+            };
+        }
+
+        // --- Canvas Drawing ---
+        function drawNumberLine() {
+            const { number } = currentInequality;
+            const range = 10;
+            const min = -11;
+            const max = 11;
+            
+            // High-res canvas setup
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            const canvasWidth = canvas.clientWidth;
+            const canvasHeight = canvas.clientHeight;
+            const centerY = canvasHeight / 2;
+            const tickHeight = 10;
+
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            const mapNumberToX = (num) => {
+                return ( (num - min) / (max - min) ) * canvasWidth;
+            };
+            
+            // Draw main line
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvasWidth, centerY);
+            ctx.strokeStyle = '#374151'; // gray-700
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw ticks and numbers
+            for (let i = min + 1; i < max; i++) {
+                const x = mapNumberToX(i);
+                ctx.beginPath();
+                ctx.moveTo(x, centerY - tickHeight / 2);
+                ctx.lineTo(x, centerY + tickHeight / 2);
+                ctx.strokeStyle = '#6b7280'; // gray-500
+                ctx.stroke();
+
+                if (i % 2 === 0) {
+                    ctx.font = '12px Inter';
+                    ctx.fillStyle = '#4b5563'; // gray-600
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i, x, centerY + 25);
+                }
+            }
+            
+            // Draw user selections
+            drawUserSelections(mapNumberToX);
+        }
+
+        function drawUserSelections(mapNumberToX) {
+            const { number } = currentInequality;
+            const boundaryX = mapNumberToX(number);
+            const centerY = canvas.clientHeight / 2;
+
+            // Shade
+            if (userSelection.shading) {
+                ctx.fillStyle = 'rgba(79, 70, 229, 0.3)'; // Indigo with transparency
+                ctx.strokeStyle = '#4f46e5'; // Indigo
+                ctx.lineWidth = 3;
+                
+                if (userSelection.shading === 'left') {
+                    ctx.fillRect(0, centerY - 8, boundaryX, 16);
+                    ctx.beginPath();
+                    ctx.moveTo(0, centerY);
+                    ctx.lineTo(boundaryX, centerY);
+                    ctx.stroke();
+                } else if (userSelection.shading === 'right') {
+                    ctx.fillRect(boundaryX, centerY - 8, canvas.clientWidth - boundaryX, 16);
+                    ctx.beginPath();
+                    ctx.moveTo(boundaryX, centerY);
+                    ctx.lineTo(canvas.clientWidth, centerY);
+                    ctx.stroke();
+                }
+            }
+
+            // Endpoint
+            if (userSelection.endpoint) {
+                const radius = 6;
+                ctx.beginPath();
+                ctx.arc(boundaryX, centerY, radius, 0, 2 * Math.PI);
+                
+                if (userSelection.endpoint === 'open') {
+                    ctx.strokeStyle = '#4f46e5';
+                    ctx.lineWidth = 2;
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (userSelection.endpoint === 'closed') {
+                    ctx.fillStyle = '#4f46e5';
+                    ctx.fill();
+                }
+            }
+        }
+        
+        function updateStreakDisplay() {
+            streakCountEl.textContent = streak;
+            streakCountEl.parentElement.classList.remove('streak-pop');
+            // A trick to re-trigger the animation
+            void streakCountEl.parentElement.offsetWidth; 
+            streakCountEl.parentElement.classList.add('streak-pop');
+        }
+
+        // --- Event Listeners and Logic ---
+        function setupNewQuestion() {
+            currentInequality = generateInequality();
+            problemDisplay.textContent = currentInequality.text;
+            
+            // Reset state
+            userSelection = { endpoint: null, shading: null };
+            solvedInput.value = '';
+            intervalInput.value = '';
+            feedbackEl.textContent = '';
+            feedbackEl.className = 'h-8 mb-4 text-center text-xl font-semibold';
+
+            checkBtn.style.display = 'inline-block';
+            nextBtn.style.display = 'none';
+            solvedInput.disabled = false;
+            intervalInput.disabled = false;
+            
+            // Reset button styles
+            [openCircleBtn, closedCircleBtn, shadeLeftBtn, shadeRightBtn].forEach(btn => {
+                btn.classList.remove('btn-selected');
+            });
+            
+            drawNumberLine();
+        }
+        
+        function checkAnswer() {
+            const userSolved = solvedInput.value.replace(/\s/g, ''); // Remove all whitespace
+            const correctSolved = currentInequality.correctSolved.replace(/\s/g, '');
+            const userInterval = intervalInput.value.replace(/\s/g, ''); 
+            const correctInterval = currentInequality.correctInterval.replace(/\s/g, '');
+
+            const isSolvedCorrect = userSolved.toLowerCase() === correctSolved.toLowerCase();
+            const isGraphCorrect = userSelection.endpoint === currentInequality.correctEndpoint && userSelection.shading === currentInequality.correctShading;
+            const isIntervalCorrect = userInterval.toLowerCase() === correctInterval.toLowerCase();
+            
+            if (isSolvedCorrect && isGraphCorrect && isIntervalCorrect) {
+                streak++;
+                feedbackEl.textContent = 'Correct! Well done!';
+                feedbackEl.className += ' text-green-600 feedback-correct';
+                checkBtn.style.display = 'none';
+                nextBtn.style.display = 'inline-block';
+                solvedInput.disabled = true;
+                intervalInput.disabled = true;
+            } else {
+                streak = 0;
+                let errorMessages = [];
+                if (!isSolvedCorrect) errorMessages.push("Your solved inequality is incorrect.");
+                if (!isGraphCorrect) errorMessages.push("The graph is not quite right.");
+                if (!isIntervalCorrect) errorMessages.push("Check your interval notation.");
+                
+                feedbackEl.textContent = errorMessages.join(' ');
+                feedbackEl.className += ' text-red-600 feedback-incorrect';
+            }
+            updateStreakDisplay();
+        }
+        
+        // --- Button Click Handlers ---
+        openCircleBtn.addEventListener('click', () => {
+            userSelection.endpoint = 'open';
+            openCircleBtn.classList.add('btn-selected');
+            closedCircleBtn.classList.remove('btn-selected');
+            drawNumberLine();
+        });
+
+        closedCircleBtn.addEventListener('click', () => {
+            userSelection.endpoint = 'closed';
+            closedCircleBtn.classList.add('btn-selected');
+            openCircleBtn.classList.remove('btn-selected');
+            drawNumberLine();
+        });
+        
+        shadeLeftBtn.addEventListener('click', () => {
+            userSelection.shading = 'left';
+            shadeLeftBtn.classList.add('btn-selected');
+            shadeRightBtn.classList.remove('btn-selected');
+            drawNumberLine();
+        });
+        
+        shadeRightBtn.addEventListener('click', () => {
+            userSelection.shading = 'right';
+            shadeRightBtn.classList.add('btn-selected');
+            shadeLeftBtn.classList.remove('btn-selected');
+            drawNumberLine();
+        });
+        
+        checkBtn.addEventListener('click', checkAnswer);
+        nextBtn.addEventListener('click', setupNewQuestion);
+
+        // --- Initial Setup ---
+        window.addEventListener('resize', drawNumberLine);
+        setupNewQuestion();
+
+    </script>
+</body>
+</html>
+

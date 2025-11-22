@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Evaluation Practice</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for correct/incorrect feedback */
+        .correct-answer {
+            border: 2px solid #22c55e; /* green-500 */
+            background-color: #f0fdf4; /* green-50 */
+        }
+        .incorrect-answer {
+            border: 2px solid #ef4444; /* red-500 */
+            background-color: #fef2f2; /* red-50 */
+        }
+        .correct-text {
+            color: #166534; /* green-800 */
+            font-weight: 600;
+        }
+        .incorrect-text {
+            color: #991b1b; /* red-800 */
+            font-weight: 600;
+        }
+        /* Style for the question display */
+        .function-display {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 1.75rem; /* 28px */
+            color: #1f2937; /* gray-800 */
+            display: inline-block; /* Allows vertical alignment for f(x) */
+        }
+        .graph-container {
+            width: 100%;
+            max-width: 300px; /* Adjust as needed */
+            margin: 0 auto;
+            position: relative;
+            aspect-ratio: 1 / 1; /* Keep it square */
+            border: 1px solid #ccc;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .graph-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .grid-line {
+            stroke: #e5e7eb; /* Light gray */
+            stroke-width: 1;
+        }
+        .axis-line {
+            stroke: #4b5563; /* Darker gray */
+            stroke-width: 2;
+        }
+        .function-line {
+            stroke: #dc2626; /* Red-600 */
+            stroke-width: 3;
+            fill: none;
+        }
+        .point {
+            fill: #2563eb; /* Blue-600 */
+            r: 4; /* radius of points */
+        }
+        .axis-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            fill: #4b5563;
+        }
+        .function-label {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 16px;
+            fill: #dc2626; /* Red-600 */
+            font-weight: bold;
+        }
+    </style>
+    <!-- Import Inter font from Google Fonts --><link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-lg w-full">
+        <!-- Header --><header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Function Evaluation Practice</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Find the input or output from equations or graphs</p>
+            <!-- Game Stats: Lives and Score -->
+            <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
+                <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
+                <div id="score-counter" class="text-blue-600">Score: 0</div>
+            </div>
+        </header>
+
+        <!-- Quiz Card --><div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+            <!-- Question Area --><div id="quiz-area" class="space-y-6">
+                
+                <!-- Given Function / Graph --><div class="text-center">
+                    <p class="text-lg text-gray-600">Given the function:</p>
+                    <div id="function-representation" class="my-2 flex justify-center items-center min-h-[60px]">
+                        <!-- Function (algebraic or graphical) will be inserted here --></div>
+                </div>
+                
+                <!-- Question to Solve --><div class="border-t border-gray-200 pt-6">
+                    <p class="text-lg text-gray-600 text-center">Determine the following:</p>
+                    <p id="question-text" class="function-display text-center font-bold my-2 text-blue-600">f(2)</p>
+                </div>
+
+                <!-- Answer Input --><div class="relative">
+                    <label for="answer-input" class="block text-sm font-medium text-gray-700">Your Answer:</label>
+                    <input type="number" id="answer-input" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm text-lg" placeholder="Enter value">
+                </div>
+
+                <!-- Feedback Area --><div id="feedback-area" class="">
+                    <!-- Feedback and Solution will be injected here --></div>
+            </div>
+
+            <!-- Button Area --><div class="mt-6 flex flex-col sm:flex-row gap-4">
+                <button id="check-btn" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md flex-1">
+                    Check Answer
+                </button>
+                <button id="next-btn" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-md flex-1 hidden">
+                    Next Question
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const functionRepresentation = document.getElementById('function-representation');
+        const questionText = document.getElementById('question-text');
+        const answerInput = document.getElementById('answer-input');
+        const feedbackArea = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const livesCounter = document.getElementById('lives-counter'); // Lives element
+        const scoreCounter = document.getElementById('score-counter'); // Score element
+
+        // --- State Variables ---
+        let correctAnswer = null;
+        let lastQuestionType = null; // 'findOutput' or 'findInput'
+        let lastFunctionFormat = null; // 'algebraic' or 'graphical'
+        let currentQuestion = {}; // Store question details for solution
+        let lives = 3; // Gamification lives
+        let score = 0; // Gamification score
+        let isGameOver = false;
+        let hasLostLifeThisQuestion = false; // Prevent multiple life losses on one question
+
+        // --- Helper Functions ---
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function updateStatsDisplay() {
+            livesCounter.innerHTML = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+            scoreCounter.innerHTML = `Score: ${score}`;
+        }
+
+
+        // --- Graph Generation Logic ---
+        function createSvgGraph(m, b) {
+            const size = 300; // SVG viewBox size
+            const gridSize = 30; // 1 unit = 30px, so 10x10 grid
+            const numGrids = size / gridSize; // Number of grid lines in one direction
+            const mid = size / 2; // Middle of the SVG
+
+            // Create SVG element
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+            svg.setAttribute('aria-hidden', 'true'); // For accessibility
+
+            // Draw grid lines
+            for (let i = 0; i <= numGrids; i++) {
+                // Horizontal lines
+                let y = i * gridSize;
+                let hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                hLine.setAttribute('x1', '0'); hLine.setAttribute('y1', y);
+                hLine.setAttribute('x2', size); hLine.setAttribute('y2', y);
+                hLine.classList.add('grid-line');
+                svg.appendChild(hLine);
+
+                // Vertical lines
+                let x = i * gridSize;
+                let vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                vLine.setAttribute('x1', x); vLine.setAttribute('y1', '0');
+                vLine.setAttribute('x2', x); vLine.setAttribute('y2', size);
+                vLine.classList.add('grid-line');
+                svg.appendChild(vLine);
+            }
+
+            // Draw axes
+            let xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            xAxis.setAttribute('x1', '0'); xAxis.setAttribute('y1', mid);
+            xAxis.setAttribute('x2', size); xAxis.setAttribute('y2', mid);
+            xAxis.classList.add('axis-line');
+            svg.appendChild(xAxis);
+
+            let yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            yAxis.setAttribute('x1', mid); yAxis.setAttribute('y1', '0');
+            yAxis.setAttribute('x2', mid); yAxis.setAttribute('y2', size);
+            yAxis.classList.add('axis-line');
+            svg.appendChild(yAxis);
+
+            // Add axis labels (simplified for visibility)
+            function addLabel(x, y, text, align = 'middle', baseline = 'central') {
+                let label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', y);
+                label.setAttribute('text-anchor', align);
+                label.setAttribute('dominant-baseline', baseline);
+                label.textContent = text;
+                label.classList.add('axis-label');
+                svg.appendChild(label);
+            }
+
+            addLabel(mid + gridSize, mid + 12, '1'); // x=1 label
+            addLabel(mid - 12, mid - gridSize, '1'); // y=1 label
+            addLabel(mid + 5, mid - 5, '0', 'start', 'end'); // origin 0
+            addLabel(size - 10, mid + 20, 'x', 'end', 'central'); // x-axis label
+            addLabel(mid - 20, 10, 'y', 'middle', 'start'); // y-axis label
+
+            // Convert Cartesian coordinates to SVG coordinates
+            function toSvgCoords(cx, cy) {
+                return {
+                    x: mid + (cx * gridSize),
+                    y: mid - (cy * gridSize) // SVG y-axis is inverted
+                };
+            }
+
+            // Draw the function line
+            let p1 = toSvgCoords(-numGrids / 2, m * (-numGrids / 2) + b);
+            let p2 = toSvgCoords(numGrids / 2, m * (numGrids / 2) + b);
+
+            let functionLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            functionLine.setAttribute('x1', p1.x);
+            functionLine.setAttribute('y1', p1.y);
+            functionLine.setAttribute('x2', p2.x);
+            functionLine.setAttribute('y2', p2.y);
+            functionLine.classList.add('function-line');
+            svg.appendChild(functionLine);
+
+            // Add the f(x) label
+            let labelSvgCoords = toSvgCoords(2, m * 2 + b + 0.5); // Position label slightly above the line
+            let functionLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            functionLabel.setAttribute('x', labelSvgCoords.x);
+            functionLabel.setAttribute('y', labelSvgCoords.y);
+            functionLabel.setAttribute('text-anchor', 'middle');
+            functionLabel.setAttribute('dominant-baseline', 'text-after-edge');
+            functionLabel.textContent = 'y = f(x)';
+            functionLabel.classList.add('function-label');
+            svg.appendChild(functionLabel);
+
+
+            // Highlight key points for clarity (y-intercept and another point)
+            // Y-intercept
+            let yIntSvg = toSvgCoords(0, b);
+            let yIntPoint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            yIntPoint.setAttribute('cx', yIntSvg.x);
+            yIntPoint.setAttribute('cy', yIntSvg.y);
+            yIntPoint.classList.add('point');
+            svg.appendChild(yIntPoint);
+
+            // Another point (e.g., when x=1 or x=2)
+            let xValForPoint = (m === 0) ? 1 : (b === 0 && Math.abs(m) === 1) ? 2 : 1; // Pick a non-zero, clear point
+            if (m !== 0 && Math.abs(m * xValForPoint + b) > numGrids / 2) { // Point might be off-grid
+                xValForPoint = (m > 0) ? -1 : 1; // Try other side for a better point
+            }
+            // Ensure point is different from y-intercept if y-intercept is (0,0)
+            if (xValForPoint === 0) xValForPoint = 1; 
+
+            let otherPointSvg = toSvgCoords(xValForPoint, m * xValForPoint + b);
+            let otherPoint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            otherPoint.setAttribute('cx', otherPointSvg.x);
+            otherPoint.setAttribute('cy', otherPointSvg.y);
+            otherPoint.classList.add('point');
+            svg.appendChild(otherPoint);
+
+
+            return svg;
+        }
+
+
+        // --- Question Generation Logic ---
+        function generateQuestion() {
+            // If game is over, don't generate a new question
+            if (isGameOver) return;
+
+            // Clear input and feedback
+            answerInput.value = '';
+            feedbackArea.innerHTML = '';
+            answerInput.classList.remove('correct-answer', 'incorrect-answer');
+            answerInput.disabled = false; // Ensure input is enabled
+            checkBtn.disabled = false;
+            checkBtn.classList.remove('hidden'); // Show check button
+            nextBtn.classList.add('hidden'); // Hide next button
+            hasLostLifeThisQuestion = false; // Reset for new question
+            
+            // 1. Generate function parameters
+            let m = getRandomInt(1, 4) * (Math.random() < 0.5 ? 1 : -1); // Slope
+            if (m === 0) m = 1; // Avoid m=0 for interesting graphs
+            let b = getRandomInt(-4, 4); // y-intercept
+            
+            // 3. Store function details
+            currentQuestion.m = m;
+            currentQuestion.b = b;
+            
+            // 1. Decide question format ('algebraic' or 'graphical'), ensuring no repeats
+            let format;
+            if (lastFunctionFormat === 'algebraic') {
+                format = 'graphical';
+            } else if (lastFunctionFormat === 'graphical') {
+                format = 'algebraic';
+            } else {
+                format = Math.random() < 0.5 ? 'algebraic' : 'graphical';
+            }
+            lastFunctionFormat = format; // Store the new format
+            currentQuestion.format = format; // Store for solution
+
+            // Display the function
+            functionRepresentation.innerHTML = ''; // Clear previous content
+            if (format === 'algebraic') {
+                let bDisplayString = '';
+                if (b > 0) {
+                    bDisplayString = `+ ${b}`;
+                } else if (b < 0) {
+                    bDisplayString = `- ${Math.abs(b)}`;
+                }
+                const functionString = `f(x) = ${m}x ${bDisplayString}`;
+                
+                functionRepresentation.innerHTML = `<p id="function-text" class="function-display font-bold">${functionString}</p>`;
+                currentQuestion.functionString = functionString;
+            } else { // graphical
+                const graphContainer = document.createElement('div');
+                graphContainer.classList.add('graph-container');
+                graphContainer.appendChild(createSvgGraph(m, b));
+                functionRepresentation.appendChild(graphContainer);
+            }
+
+            // 1. Decide question type ('findOutput' or 'findInput'), ensuring no repeats
+            let type;
+            if (lastQuestionType === 'findOutput') {
+                type = 'findInput';
+            } else if (lastQuestionType === 'findInput') {
+                type = 'findOutput';
+            } else {
+                type = Math.random() < 0.5 ? 'findOutput' : 'findInput';
+            }
+            lastQuestionType = type; // Store the new type
+            currentQuestion.type = type; // Store for solution
+
+            if (type === 'findOutput') {
+                // Type A: Given f(x) = mx + b, determine f(a)
+                let a = getRandomInt(-3, 3);
+                if (format === 'graphical' && Math.abs(m * a + b) > 5) {
+                    a = getRandomInt(-1, 1);
+                }
+                questionText.textContent = `f(${a})`;
+                correctAnswer = m * a + b;
+                
+                currentQuestion.a = a;
+                currentQuestion.correctAnswer = correctAnswer;
+            } else {
+                // Type B: Given f(x) = mx + b, determine x when f(x) = c
+                let x_ans = getRandomInt(-3, 3);
+                if (format === 'graphical' && Math.abs(x_ans) > 5) {
+                    x_ans = getRandomInt(-1, 1);
+                }
+                if(x_ans === 0 && b === 0) x_ans = getRandomInt(1, 2) * (Math.random() < 0.5 ? 1 : -1);
+
+                const c = m * x_ans + b;
+                questionText.textContent = `f(x) = ${c}`;
+                correctAnswer = x_ans;
+
+                currentQuestion.c = c;
+                currentQuestion.correctAnswer = x_ans;
+            }
+        }
+
+        // --- Checking Logic ---
+        function checkAnswer() {
+            if (isGameOver) return; // Don't check if game is over
+
+            const userAnswer = parseInt(answerInput.value, 10);
+            
+            // Show 'Next' button as soon as they check
+            nextBtn.classList.remove('hidden');
+
+            if (isNaN(userAnswer)) {
+                feedbackArea.innerHTML = `<p class="incorrect-text text-center">Please enter a number.</p>`;
+                answerInput.classList.add('incorrect-answer');
+                
+                if (!hasLostLifeThisQuestion) {
+                    lives--;
+                    hasLostLifeThisQuestion = true;
+                    updateStatsDisplay();
+                    checkGameOver();
+                }
+                return;
+            }
+            
+            // --- Build Solution String ---
+            let solutionHtml = '<div class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">';
+            solutionHtml += '<h4 class="font-semibold text-gray-700 mb-2">Step-by-Step Solution:</h4>';
+            
+            if (currentQuestion.format === 'algebraic') {
+                solutionHtml += `<p class="text-gray-600">We are given the function: <strong class="function-display" style="font-size: 1.25rem;">${currentQuestion.functionString}</strong></p>`;
+            } else {
+                solutionHtml += `<p class="text-gray-600">We are given the function as a graph:</p>`;
+                const graphContainer = document.createElement('div');
+                graphContainer.classList.add('graph-container');
+                graphContainer.appendChild(createSvgGraph(currentQuestion.m, currentQuestion.b));
+                solutionHtml += `<div class="flex justify-center my-2">${graphContainer.outerHTML}</div>`;
+            }
+
+            if (currentQuestion.type === 'findOutput') {
+                solutionHtml += `<p class="text-gray-600 mt-2">We need to find <strong class="function-display" style="font-size: 1.25rem;">f(${currentQuestion.a})</strong>.</p>`;
+                if (currentQuestion.format === 'algebraic') {
+                    let bDisplayString = '';
+                    if (currentQuestion.b > 0) {
+                        bDisplayString = `+ ${currentQuestion.b}`;
+                    } else if (currentQuestion.b < 0) {
+                        bDisplayString = `- ${Math.abs(currentQuestion.b)}`;
+                    }
+
+                    solutionHtml += `<p class="text-gray-600 mt-2">1. Substitute <strong class="text-red-600">${currentQuestion.a}</strong> in for <strong class="text-blue-600">x</strong> into <strong class="function-display" style="font-size: 1.25rem;">${currentQuestion.functionString}</strong>:</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;">f(${currentQuestion.a}) = ${currentQuestion.m}(<strong class="text-red-600">${currentQuestion.a}</strong>) ${bDisplayString}</p>`;
+                    solutionHtml += `<p class="text-gray-600 mt-2">2. Simplify the expression:</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;">f(${currentQuestion.a}) = ${currentQuestion.m * currentQuestion.a} ${bDisplayString}</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;">f(${currentQuestion.a}) = <strong class="text-green-600">${currentQuestion.correctAnswer}</strong></p>`;
+                } else { // graphical
+                    solutionHtml += `<p class="text-gray-600 mt-2">1. Locate <strong class="text-red-600">x = ${currentQuestion.a}</strong> on the x-axis.</p>`;
+                    solutionHtml += `<p class="text-gray-600">2. Move vertically from <strong class="text-red-600">x = ${currentQuestion.a}</strong> to the function line.</p>`;
+                    solutionHtml += `<p class="text-gray-600">3. From that point on the line, move horizontally to the y-axis to read the corresponding y-value.</p>`;
+                    solutionHtml += `<p class="text-gray-600 text-center my-2">The y-value is <strong class="text-green-600">${currentQuestion.correctAnswer}</strong>.</p>`;
+                }
+            
+            } else { // type === 'findInput'
+                let bDisplayString = '';
+                if (currentQuestion.b > 0) {
+                    bDisplayString = `+ ${currentQuestion.b}`;
+                } else if (currentQuestion.b < 0) {
+                    bDisplayString = `- ${Math.abs(currentQuestion.b)}`;
+                }
+                const bAbs = Math.abs(currentQuestion.b);
+
+                solutionHtml += `<p class="text-gray-600 mt-2">We need to find <strong class="text-blue-600">x</strong> when <strong class="function-display" style="font-size: 1.25rem;">f(x) = ${currentQuestion.c}</strong>.</p>`;
+                if (currentQuestion.format === 'algebraic') {
+                    const oppositeBSign = currentQuestion.b > 0 ? '-' : '+';
+                    const solvedB = currentQuestion.c - currentQuestion.b;
+
+                    solutionHtml += `<p class="text-gray-600 mt-2">1. Set the function equal to <strong class="text-red-600">${currentQuestion.c}</strong>:</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;"><strong class="text-red-600">${currentQuestion.c}</strong> = ${currentQuestion.m}<strong class="text-blue-600">x</strong> ${bDisplayString}</p>`;
+                    
+                    solutionHtml += `<p class="text-gray-600 mt-2">2. Solve for <strong class="text-blue-600">x</strong>. First, isolate the <strong class="text-blue-600">x</strong> term by ${oppositeBSign === '+' ? 'adding' : 'subtracting'} <strong class="text-purple-600">${bAbs}</strong> from both sides:</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;"><strong class="text-red-600">${currentQuestion.c}</strong> <strong class="text-purple-600">${oppositeBSign} ${bAbs}</strong> = ${currentQuestion.m}<strong class="text-blue-600">x</strong> ${bDisplayString} <strong class="text-purple-600">${oppositeBSign} ${bAbs}</strong></p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;">${solvedB} = ${currentQuestion.m}<strong class="text-blue-600">x</strong></p>`;
+                    
+                    solutionHtml += `<p class="text-gray-600 mt-2">3. Divide both sides by <strong class="text-purple-600">${currentQuestion.m}</strong>:</p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;">${solvedB} / <strong class="text-purple-600">(${currentQuestion.m})</strong> = ${currentQuestion.m}<strong class="text-blue-600">x</strong> / <strong class="text-purple-600">(${currentQuestion.m})</strong></p>`;
+                    solutionHtml += `<p class="function-display text-center my-2" style="font-size: 1.25rem;"><strong class="text-green-600">${currentQuestion.correctAnswer}</strong> = <strong class="text-blue-600">x</strong></p>`;
+                } else { // graphical
+                    solutionHtml += `<p class="text-gray-600 mt-2">1. Locate <strong class="text-red-600">y = ${currentQuestion.c}</strong> on the y-axis.</p>`;
+                    solutionHtml += `<p class="text-gray-600">2. Move horizontally from <strong class="text-red-600">y = ${currentQuestion.c}</strong> to the function line.</p>`;
+                    solutionHtml += `<p class="text-gray-600">3. From that point on the line, move vertically to the x-axis to read the corresponding x-value.</p>`;
+                    solutionHtml += `<p class="text-gray-600 text-center my-2">The x-value is <strong class="text-green-600">${currentQuestion.correctAnswer}</strong>.</p>`;
+                }
+            }
+            solutionHtml += '</div>';
+
+            // --- Prepend Feedback and manage buttons ---
+            let feedbackHtml = '';
+            if (userAnswer === correctAnswer) {
+                feedbackHtml = `<p class="correct-text text-center mb-2">Correct! Great job.</p>`;
+                answerInput.classList.remove('incorrect-answer');
+                answerInput.classList.add('correct-answer');
+                checkBtn.classList.add('hidden'); // Hide check button on correct
+                checkBtn.disabled = true;
+                answerInput.disabled = true; // Disable input after correct
+
+                // Only add score if they haven't lost a life on this question
+                if (!hasLostLifeThisQuestion) {
+                    score++;
+                    updateStatsDisplay();
+                }
+
+            } else {
+                feedbackHtml = `<p class="incorrect-text text-center mb-2">Not quite. Review the solution below.</p>`;
+                answerInput.classList.remove('correct-answer');
+                answerInput.classList.add('incorrect-answer');
+                checkBtn.classList.remove('hidden'); // Keep check button visible
+                checkBtn.disabled = false; // Allow them to try again
+
+                if (!hasLostLifeThisQuestion) {
+                    lives--;
+                    hasLostLifeThisQuestion = true;
+                    updateStatsDisplay();
+                    checkGameOver();
+                }
+            }
+            
+            feedbackArea.innerHTML = feedbackHtml + solutionHtml;
+        }
+
+        function checkGameOver() {
+            if (lives <= 0) {
+                isGameOver = true;
+                feedbackArea.innerHTML = `<p class="incorrect-text text-center text-xl font-bold mb-2">Game Over!</p><p class="text-gray-700 text-center text-lg">Your final score is: ${score}</p>`;
+                checkBtn.classList.add('hidden');
+                checkBtn.disabled = true;
+                nextBtn.textContent = 'Restart Game';
+                nextBtn.classList.remove('hidden');
+                answerInput.disabled = true;
+            }
+        }
+
+        function restartGame() {
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            updateStatsDisplay();
+            nextBtn.textContent = 'Next Question';
+            generateQuestion();
+        }
+
+        // --- Event Listeners ---
+        checkBtn.addEventListener('click', checkAnswer);
+        
+        nextBtn.addEventListener('click', () => {
+            if (isGameOver) {
+                restartGame();
+            } else {
+                generateQuestion();
+            }
+        });
+        
+        // Allow pressing Enter to check answer
+        answerInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                if (!checkBtn.disabled) {
+                    checkAnswer();
+                }
+            }
+        });
+
+        // Initial question on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatsDisplay(); // Show initial stats
+            generateQuestion();
+        });
+    </script>
+</body>
+</html>
+

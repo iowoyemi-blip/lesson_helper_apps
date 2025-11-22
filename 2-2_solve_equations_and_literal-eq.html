@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solving Linear Equations Practice</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for correct/incorrect feedback */
+        .correct-answer {
+            border: 2px solid #22c55e; /* green-500 */
+            background-color: #f0fdf4; /* green-50 */
+        }
+        .incorrect-answer {
+            border: 2px solid #ef4444; /* red-500 */
+            background-color: #fef2f2; /* red-50 */
+        }
+        .correct-text {
+            color: #166534; /* green-800 */
+            font-weight: 600;
+        }
+        .incorrect-text {
+            color: #991b1b; /* red-800 */
+            font-weight: 600;
+        }
+        /* Style for the problem display */
+        .problem-display {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 1.75rem; /* 28px */
+            letter-spacing: 1px;
+            font-weight: 600;
+            padding: 1rem;
+            background-color: #f9fafb; /* gray-50 */
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db; /* gray-300 */
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1f2937; /* gray-800 */
+            flex-wrap: wrap; 
+        }
+        .problem-display sup, .problem-display sub {
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            text-align: center;
+            margin: 0 0.25rem;
+            vertical-align: middle;
+        }
+        .fraction-num {
+            border-bottom: 2px solid #1f2937;
+            padding: 0 0.25rem;
+        }
+        .fraction-den {
+            padding: 0 0.25rem;
+        }
+
+        /* Style for input fields */
+        .profile-input {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            text-align: left;
+            font-family: 'Menlo', 'Courier New', monospace;
+        }
+        .problem-fieldset {
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .problem-legend {
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0 0.5rem;
+            color: #1f2937; /* gray-800 */
+        }
+        /* Symbol keyboard */
+        .symbol-keyboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .symbol-btn {
+            font-family: 'Menlo', 'Courier New', monospace;
+            font-size: 1.25rem;
+            font-weight: bold;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .symbol-btn:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+    <!-- Import Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-2xl w-full">
+        <!-- Header -->
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Solving Linear Equations</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Solve all four equations to score a point!</p>
+            <!-- Game Stats: Lives and Score -->
+            <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
+                <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
+                <div id="score-counter" class="text-blue-600">Score: 0</div>
+            </div>
+        </header>
+
+        <!-- Quiz Card -->
+        <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+            <!-- Symbol Keyboard -->
+            <div class="symbol-keyboard">
+                <button class="symbol-btn" data-symbol="(">(</button>
+                <button class="symbol-btn" data-symbol=")">)</button>
+                <button class="symbol-btn" data-symbol="/">/</button>
+                <button class="symbol-btn" data-symbol="+">+</button>
+                <button class="symbol-btn" data-symbol="-">-</button>
+            </div>
+            
+            <!-- Questions Grid -->
+            <div class="border-t border-gray-200 pt-6">
+                <!-- Problem 1: 3-Step Integer -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">1. Three-Step Equation</legend>
+                    <div id="poly-1-display" class="problem-display my-2"></div>
+                    <input type="text" id="poly-1-input" class="profile-input" placeholder="e.g., x=5">
+                </fieldset>
+                
+                <!-- Problem 2: Fractions -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">2. Equation with Fractions</legend>
+                    <div id="poly-2-display" class="problem-display my-2"></div>
+                    <input type="text" id="poly-2-input" class="profile-input" placeholder="e.g., x=3/2 or x=1.5">
+                </fieldset>
+
+                <!-- Problem 3: Special Cases -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">3. Special Case Equation</legend>
+                    <div id="poly-3-display" class="problem-display my-2"></div>
+                    <select id="poly-3-input" class="profile-input">
+                        <option value="">Select answer...</option>
+                        <option value="No Solution">No Solution</option>
+                        <option value="Infinitely Many Solutions">Infinitely Many Solutions</option>
+                    </select>
+                </fieldset>
+
+                <!-- Problem 4: Literal Equations -->
+                <fieldset class="problem-fieldset">
+                    <legend class="problem-legend">4. Literal Equation</legend>
+                    <div id="poly-4-display" class="problem-display my-2"></div>
+                    <input type="text" id="poly-4-input" class="profile-input" placeholder="e.g., x=(C-B)/A">
+                </fieldset>
+            </div>
+
+            <!-- Feedback Area -->
+            <div id="feedback-area" class="text-center h-6 mt-6">
+                <!-- Feedback will be injected here -->
+            </div>
+
+            <!-- Button Area -->
+            <div class="mt-6">
+                <button id="check-btn" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md">
+                    Check Answer
+                </button>
+                <button id="next-btn" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-md hidden">
+                    Next Question
+                </button>
+                <button id="restart-btn" class="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors shadow-md mt-4 hidden">
+                    Restart Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const livesCounter = document.getElementById('lives-counter');
+        const scoreCounter = document.getElementById('score-counter');
+        
+        const poly1Display = document.getElementById('poly-1-display');
+        const poly1Input = document.getElementById('poly-1-input');
+        const poly2Display = document.getElementById('poly-2-display');
+        const poly2Input = document.getElementById('poly-2-input');
+        const poly3Display = document.getElementById('poly-3-display');
+        const poly3Input = document.getElementById('poly-3-input');
+        const poly4Display = document.getElementById('poly-4-display');
+        const poly4Input = document.getElementById('poly-4-input');
+        
+        const allInputs = [poly1Input, poly2Input, poly3Input, poly4Input];
+        const keyboard = document.querySelector('.symbol-keyboard');
+
+        const feedbackArea = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // --- Game State ---
+        let lives = 3;
+        let score = 0;
+        let isGameOver = false;
+        let currentProblem = {};
+        let lastFocusedInput = poly1Input;
+        let lastLiteralType = 0; // 1-4
+
+        // --- Helper Functions ---
+        function getRandomInt(min, max, exclude = []) {
+            let num;
+            do {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                num = Math.floor(Math.random() * (max - min + 1)) + min;
+            } while (exclude.includes(num));
+            return num;
+        }
+
+        function updateStatsDisplay() {
+            livesCounter.innerHTML = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+            scoreCounter.innerHTML = `Score: ${score}`;
+        }
+        
+        // Helper to format a (potentially negative) number for display
+        function formatNum(n, pre = " + ") {
+            if (n < 0) return ` - ${Math.abs(n)}`;
+            return `${pre}${n}`;
+        }
+        
+        // Helper to format a fraction for display
+        function formatFraction(n, d) {
+            return `<div class="fraction"><span class="fraction-num">${n}</span><span class="fraction-den">${d}</span></div>`;
+        }
+
+        /**
+         * Normalizes a fraction/decimal answer
+         */
+        function normalizeFractionAnswer(str) {
+            if (!str) return "invalid";
+            let normStr = str.replace(/\s/g, '').toLowerCase().replace('x=','');
+            
+            // Check if it's a fraction
+            if (normStr.includes('/')) {
+                const parts = normStr.split('/');
+                if (parts.length !== 2) return "invalid";
+                const num = parseFloat(parts[0]);
+                const den = parseFloat(parts[1]);
+                if (isNaN(num) || isNaN(den) || den === 0) return "invalid";
+                return (num / den).toFixed(4); // Compare as decimal
+            }
+            
+            // Check if it's a decimal
+            const decVal = parseFloat(normStr);
+            if (isNaN(decVal)) return "invalid";
+            return decVal.toFixed(4);
+        }
+        
+        /**
+         * Normalizes a literal equation answer
+         */
+        function normalizeLiteralAnswer(str) {
+            if (!str) return "";
+            return str.replace(/\s/g, '').toLowerCase().replace('x=','');
+        }
+
+        // --- Problem Generation ---
+
+        function generateProblem1() {
+            // New logic: ax + b = cx + d
+            const x = getRandomInt(-5, 5, [0, 1]); // Solution
+            const a = getRandomInt(2, 6);
+            const c = getRandomInt(1, 5, [a]); // Ensure a != c
+            const b = getRandomInt(-10, 10);
+            
+            // d = x(a - c) + b
+            const d = x * (a - c) + b;
+
+            const display = `${a}x ${formatNum(b)} = ${c}x ${formatNum(d)}`;
+            const answer = x;
+            return { display, answer };
+        }
+
+        function generateProblem2() {
+            // Fractions: (a/b)x + (c/d) = (e/f)
+            
+            // REMOVED faulty/duplicate variable declarations that caused the error
+            
+            // Let's force common denominators
+            const d = getRandomInt(2, 4); // Common denominator, e.g., 3
+            const n1 = getRandomInt(1, 2); // e.g., 1 -> (1/3)x
+            const n2 = getRandomInt(1, 2); // e.g., 2 -> + 2/3
+            const x_sol = getRandomInt(-3, 3, [0]); // integer solution
+            
+            const n3 = n1 * x_sol + n2; // e.g., 1*(3) + 2 = 5
+            
+            // (1/3)x + 2/3 = 5/3
+            const display = `${formatFraction(n1, d)}x ${formatNum(n2, ' + ')}/${d} = ${formatFraction(n3, d)}`;
+            const answer = x_sol;
+            
+            return { display, answer };
+        }
+
+        function generateProblem3() {
+            // New logic: c(dx + e) + f = g(hx + i) + j
+            // We need total x on left (cd) == total x on right (gh)
+            const a = getRandomInt(2, 4); // c
+            const b = getRandomInt(1, 3); // d
+            const xCoeff = a * b; // e.g., 6x
+            
+            const c = getRandomInt(1, 3); // g
+            const d = xCoeff / c; // h
+            
+            // Ensure c*d is an integer and c != a
+            if (d !== Math.floor(d) || c === a) {
+                // If not clean, just retry.
+                return generateProblem3();
+            }
+
+            const e = getRandomInt(-5, 5); // e
+            const f = getRandomInt(-5, 5); // f
+            const leftConst = a * e + f;
+
+            if (Math.random() < 0.5) {
+                // Infinitely Many Solutions: leftConst == rightConst
+                const g = getRandomInt(-5, 5); // i
+                const h = leftConst - (c * g); // j
+                const display = `${a}(${b}x ${formatNum(e)}) ${formatNum(f)} = ${c}(${d}x ${formatNum(g)}) ${formatNum(h)}`;
+                const answer = "Infinitely Many Solutions";
+                return { display, answer };
+            } else {
+                // No Solution: leftConst != rightConst
+                let rightConst;
+                let g; // This will be 'i'
+                let h; // This will be 'j'
+                do {
+                    g = getRandomInt(-5, 5); // i
+                    h = getRandomInt(-5, 5); // j
+                    rightConst = c * g + h;
+                } while (leftConst === rightConst); // Ensure constants are different
+
+                // The lines below were the source of the error and were not needed.
+                // const g = (rightConst - h) / c; // This is 'i'
+                // const h = rightConst - c * g; // This is 'j'
+
+                const display = `${a}(${b}x ${formatNum(e)}) ${formatNum(f)} = ${c}(${d}x ${formatNum(g)}) ${formatNum(h)}`;
+                const answer = "No Solution";
+                return { display, answer };
+            }
+        }
+
+        function generateProblem4() {
+            // Literal Equations
+            let nextType = lastLiteralType % 4 + 1;
+            lastLiteralType = nextType;
+            let display = "", answers = [];
+
+            if (nextType === 1) {
+                // Ax + B = C, solve for x
+                display = "Solve for x: Ax + B = C";
+                answers = ["(c-b)/a"];
+            } else if (nextType === 2) {
+                // P = 2L + 2W, solve for W
+                display = "Solve for W: P = 2L + 2W";
+                answers = ["(p-2l)/2"];
+            } else if (nextType === 3) {
+                // A = (1/2)bh, solve for b
+                display = `Solve for b: A = ${formatFraction(1,2)}bh`;
+                answers = ["2a/h"];
+            } else {
+                // Ax + By = C, solve for y
+                display = "Solve for y: Ax + By = C";
+                answers = ["(c-ax)/b"];
+            }
+            return { display, answers };
+        }
+
+        // --- Game Flow ---
+        function startNewProblem() {
+            if (isGameOver) return;
+            
+            currentProblem = {}; // Reset problem
+            
+            const prob1 = generateProblem1();
+            const prob2 = generateProblem2();
+            const prob3 = generateProblem3();
+            const prob4 = generateProblem4();
+
+            currentProblem.prob1 = prob1;
+            currentProblem.prob2 = prob2;
+            currentProblem.prob3 = prob3;
+            currentProblem.prob4 = prob4;
+
+            poly1Display.innerHTML = prob1.display;
+            poly2Display.innerHTML = prob2.display;
+            poly3Display.innerHTML = prob3.display;
+            poly4Display.innerHTML = prob4.display;
+            
+            // Reset UI
+            for (const input of allInputs) {
+                input.value = "";
+                input.disabled = false;
+                input.classList.remove('correct-answer', 'incorrect-answer');
+            }
+            feedbackArea.innerHTML = "";
+            checkBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+        }
+
+        function checkAnswer() {
+            let allCorrect = true;
+
+            // Problem 1 Check (Integer)
+            const p1User = normalizeFractionAnswer(poly1Input.value);
+            const p1Ans = normalizeFractionAnswer(currentProblem.prob1.answer.toString());
+            if (p1User === p1Ans) {
+                poly1Input.classList.add('correct-answer');
+                poly1Input.classList.remove('incorrect-answer');
+            } else {
+                poly1Input.classList.add('incorrect-answer');
+                poly1Input.classList.remove('correct-answer');
+                allCorrect = false;
+            }
+
+            // Problem 2 Check (Fraction/Decimal)
+            const p2User = normalizeFractionAnswer(poly2Input.value);
+            const p2Ans = normalizeFractionAnswer(currentProblem.prob2.answer.toString());
+            if (p2User === p2Ans) {
+                poly2Input.classList.add('correct-answer');
+                poly2Input.classList.remove('incorrect-answer');
+            } else {
+                poly2Input.classList.add('incorrect-answer');
+                poly2Input.classList.remove('correct-answer');
+                allCorrect = false;
+            }
+
+            // Problem 3 Check (Select)
+            if (poly3Input.value === currentProblem.prob3.answer) {
+                poly3Input.classList.add('correct-answer');
+                poly3Input.classList.remove('incorrect-answer');
+            } else {
+                poly3Input.classList.add('incorrect-answer');
+                poly3Input.classList.remove('correct-answer');
+                allCorrect = false;
+            }
+
+            // Problem 4 Check (Literal)
+            const p4User = normalizeLiteralAnswer(poly4Input.value);
+            if (currentProblem.prob4.answers.includes(p4User)) {
+                poly4Input.classList.add('correct-answer');
+                poly4Input.classList.remove('incorrect-answer');
+            } else {
+                poly4Input.classList.add('incorrect-answer');
+                poly4Input.classList.remove('correct-answer');
+                allCorrect = false;
+            }
+            
+            // Handle results
+            if (allCorrect) {
+                score++;
+                updateStatsDisplay();
+                feedbackArea.innerHTML = `<p class="correct-text">Correct! Great job!</p>`;
+                for (const input of allInputs) {
+                    input.disabled = true;
+                }
+                checkBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                lives--;
+                updateStatsDisplay();
+                if (lives <= 0) {
+                    isGameOver = true;
+                    feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
+                    for (const input of allInputs) {
+                        input.disabled = true;
+                    }
+                    checkBtn.classList.add('hidden');
+                    restartBtn.classList.remove('hidden');
+                    // Show correct answers
+                    if (p1User !== p1Ans) poly1Input.value = currentProblem.prob1.answer;
+                    if (p2User !== p2Ans) poly2Input.value = currentProblem.prob2.answer;
+                    if (poly3Input.value !== currentProblem.prob3.answer) poly3Input.value = currentProblem.prob3.answer;
+                    if (!currentProblem.prob4.answers.includes(p4User)) poly4Input.value = currentProblem.prob4.answers[0];
+                } else {
+                    feedbackArea.innerHTML = `<p class="incorrect-text">Not quite. Fix the red boxes and try again.</p>`;
+                }
+            }
+        }
+
+        function handleRestart() {
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            updateStatsDisplay();
+            restartBtn.classList.add('hidden');
+            startNewProblem();
+        }
+
+        // --- Event Listeners ---
+        checkBtn.addEventListener('click', checkAnswer);
+        nextBtn.addEventListener('click', startNewProblem);
+        restartBtn.addEventListener('click', handleRestart);
+
+        allInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                lastFocusedInput = input;
+            });
+        });
+
+        keyboard.addEventListener('click', (e) => {
+            if (e.target.classList.contains('symbol-btn')) {
+                const symbol = e.target.dataset.symbol;
+                if (lastFocusedInput && lastFocusedInput.type !== 'select-one') {
+                    lastFocusedInput.value += symbol;
+                    lastFocusedInput.focus();
+                }
+            }
+        });
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatsDisplay();
+            startNewProblem();
+        });
+    </script>
+</body>
+</html>

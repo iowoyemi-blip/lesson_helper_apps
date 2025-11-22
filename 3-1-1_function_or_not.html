@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Is It a Function?</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for feedback */
+        .correct-answer {
+            background-color: #d1fae5; /* green-100 */
+            border-color: #10b981; /* green-500 */
+            color: #065f46; /* green-800 */
+        }
+        .incorrect-answer {
+            background-color: #fee2e2; /* red-100 */
+            border-color: #ef4444; /* red-500 */
+            color: #991b1b; /* red-800 */
+        }
+        .correct-text { color: #166534; font-weight: 600; }
+        .incorrect-text { color: #991b1b; font-weight: 600; }
+        
+        /* Card Styles */
+        .problem-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 320px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            font-weight: 700;
+            color: #374151;
+            width: 100%;
+            text-align: left;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Graph Styles */
+        .graph-container {
+            width: 100%;
+            max-width: 250px;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            border: 1px solid #ccc;
+            background-color: white;
+            cursor: crosshair;
+        }
+        .graph-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .grid-line { stroke: #e5e7eb; stroke-width: 1; }
+        .axis-line { stroke: #4b5563; stroke-width: 2; }
+        .graph-path { stroke: #2563eb; stroke-width: 3; fill: none; }
+        .graph-point { fill: #2563eb; r: 4; }
+        
+        /* Vertical Line Test Tool */
+        .v-line-tool {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #ef4444; /* red-500 */
+            pointer-events: none;
+            display: none; /* Hidden by default until hover */
+            opacity: 0.6;
+        }
+        .graph-container:hover .v-line-tool {
+            display: block;
+        }
+
+        /* Table Styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 1rem;
+        }
+        .data-table th {
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            padding: 0.25rem;
+            font-weight: 600;
+        }
+        .data-table td {
+            border: 1px solid #d1d5db;
+            padding: 0.25rem;
+        }
+
+        /* Ordered Pairs Style */
+        .pairs-container {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.25rem;
+            text-align: center;
+            padding: 1rem;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        /* Selection Buttons */
+        .choice-btn {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #374151;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .choice-btn.selected {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+    </style>
+    <!-- Import Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-6xl w-full">
+        <!-- Header -->
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Is It a Function?</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Identify if each representation is a function or not</p>
+            <!-- Game Stats -->
+            <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
+                <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
+                <div id="score-counter" class="text-blue-600">Score: 0</div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            
+            <!-- Problems Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Card 1: Graph -->
+                <div class="problem-card" id="card-0">
+                    <div class="card-header">1. Graph</div>
+                    <div class="graph-container" id="graph-container">
+                        <svg id="svg-graph" viewBox="0 0 300 300"></svg>
+                        <div class="v-line-tool" id="v-line"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 italic">Tip: Use the vertical line test</p>
+                    <div class="w-full space-y-2 mt-auto">
+                        <button class="choice-btn" onclick="selectChoice(0, true)">Function</button>
+                        <button class="choice-btn" onclick="selectChoice(0, false)">Not a Function</button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Table -->
+                <div class="problem-card" id="card-1">
+                    <div class="card-header">2. Table</div>
+                    <div class="w-full flex justify-center">
+                        <table class="data-table" id="table-display">
+                            <thead><tr><th>x</th><th>y</th></tr></thead>
+                            <tbody><!-- Rows --></tbody>
+                        </table>
+                    </div>
+                    <div class="w-full space-y-2 mt-auto">
+                        <button class="choice-btn" onclick="selectChoice(1, true)">Function</button>
+                        <button class="choice-btn" onclick="selectChoice(1, false)">Not a Function</button>
+                    </div>
+                </div>
+
+                <!-- Card 3: Ordered Pairs -->
+                <div class="problem-card" id="card-2">
+                    <div class="card-header">3. Ordered Pairs</div>
+                    <div class="pairs-container flex items-center justify-center h-full">
+                        <span id="pairs-display"></span>
+                    </div>
+                    <div class="w-full space-y-2 mt-auto">
+                        <button class="choice-btn" onclick="selectChoice(2, true)">Function</button>
+                        <button class="choice-btn" onclick="selectChoice(2, false)">Not a Function</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Feedback & Buttons -->
+            <div class="mt-8 text-center">
+                <div id="feedback-area" class="h-8 mb-4 font-bold"></div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="check-btn" class="w-full md:w-1/3 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md">
+                        Check Answers
+                    </button>
+                    <button id="next-btn" class="w-full md:w-1/3 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-md hidden">
+                        Next Set
+                    </button>
+                    <button id="restart-btn" class="w-full md:w-1/3 bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors shadow-md hidden">
+                        Restart Game
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let lives = 3;
+        let score = 0;
+        let isGameOver = false;
+        let currentTruths = [false, false, false]; // [isGraphFunction, isTableFunction, isPairsFunction]
+        let userSelections = [null, null, null]; // [userGraphChoice, userTableChoice, userPairsChoice]
+
+        // --- DOM ---
+        const livesCounter = document.getElementById('lives-counter');
+        const scoreCounter = document.getElementById('score-counter');
+        const feedbackArea = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        const graphSvg = document.getElementById('svg-graph');
+        const vLine = document.getElementById('v-line');
+        const graphContainer = document.getElementById('graph-container');
+        const tableBody = document.querySelector('#table-display tbody');
+        const pairsDisplay = document.getElementById('pairs-display');
+
+        // --- Constants ---
+        const SVG_SIZE = 300;
+        const GRID_RANGE = 5;
+        const GRID_SIZE = SVG_SIZE / (GRID_RANGE * 2);
+        const MID = SVG_SIZE / 2;
+
+        // --- Helpers ---
+        function getRandomInt(min, max, exclude = []) {
+            let num;
+            do {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                num = Math.floor(Math.random() * (max - min + 1)) + min;
+            } while (exclude.includes(num));
+            return num;
+        }
+
+        function updateStats() {
+            livesCounter.innerHTML = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+            scoreCounter.innerHTML = `Score: ${score}`;
+        }
+
+        function toPixel(val) { return MID + (val * GRID_SIZE); }
+        function toPixelY(val) { return MID - (val * GRID_SIZE); }
+
+        // --- Graphing V-Line Tool ---
+        graphContainer.addEventListener('mousemove', (e) => {
+            const rect = graphContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            // Clamp line within box
+            if (x >= 0 && x <= rect.width) {
+                vLine.style.left = `${x}px`;
+            }
+        });
+
+        // --- Generators ---
+
+        // 1. Graph Generator
+        function generateGraph() {
+            graphSvg.innerHTML = '';
+            // Draw Grid
+            for(let i=0; i<=10; i++) {
+                let pos = i * GRID_SIZE * 2; // fewer lines
+                graphSvg.innerHTML += `<line x1="0" y1="${pos}" x2="${SVG_SIZE}" y2="${pos}" class="grid-line" />`;
+                graphSvg.innerHTML += `<line x1="${pos}" y1="0" x2="${pos}" y2="${SVG_SIZE}" class="grid-line" />`;
+            }
+            graphSvg.innerHTML += `<line x1="0" y1="${MID}" x2="${SVG_SIZE}" y2="${MID}" class="axis-line" />`;
+            graphSvg.innerHTML += `<line x1="${MID}" y1="0" x2="${MID}" y2="${SVG_SIZE}" class="axis-line" />`;
+
+            const isFunction = Math.random() < 0.5;
+            const type = getRandomInt(1, 4);
+
+            if (isFunction) {
+                // Function: Linear, Quadratic, Cubic, or Discrete Function
+                if (type === 1) { // Linear
+                    let m = getRandomInt(-2, 2);
+                    let b = getRandomInt(-3, 3);
+                    let x1 = -5, y1 = m*x1+b;
+                    let x2 = 5, y2 = m*x2+b;
+                    graphSvg.innerHTML += `<line x1="${toPixel(x1)}" y1="${toPixelY(y1)}" x2="${toPixel(x2)}" y2="${toPixelY(y2)}" class="graph-path" />`;
+                } else if (type === 2) { // Parabola
+                    let a = (Math.random() < 0.5 ? 0.2 : -0.2);
+                    let path = `M ${toPixel(-5)} ${toPixelY(a*25)}`;
+                    for(let x=-4; x<=5; x++) path += ` L ${toPixel(x)} ${toPixelY(a*x*x)}`;
+                    graphSvg.innerHTML += `<path d="${path}" class="graph-path" fill="none" />`;
+                } else if (type === 3) { // Discrete Function (unique x)
+                    for(let i=0; i<6; i++) {
+                        let x = getRandomInt(-4, 4);
+                        // Ensure unique x visually for clarity if we re-roll? 
+                        // Actually let's just force distinct x
+                        let distinctX = -4 + (i * 1.5);
+                        let y = getRandomInt(-4, 4);
+                        graphSvg.innerHTML += `<circle cx="${toPixel(distinctX)}" cy="${toPixelY(y)}" class="graph-point" />`;
+                    }
+                } else { // Absolute Value
+                    let path = `M ${toPixel(-5)} ${toPixelY(5)} L ${toPixel(0)} ${toPixelY(0)} L ${toPixel(5)} ${toPixelY(5)}`;
+                    graphSvg.innerHTML += `<path d="${path}" class="graph-path" fill="none" />`;
+                }
+            } else {
+                // Non-Function: Vertical Line, Sideways Parabola, Circle, Discrete Fails
+                if (type === 1) { // Vertical Line
+                    let x = getRandomInt(-3, 3);
+                    graphSvg.innerHTML += `<line x1="${toPixel(x)}" y1="0" x2="${toPixel(x)}" y2="${SVG_SIZE}" class="graph-path" />`;
+                } else if (type === 2) { // Sideways Parabola (x = y^2)
+                    let a = 0.2;
+                    let path = `M ${toPixel(a*25)} ${toPixelY(-5)}`;
+                    for(let y=-4; y<=5; y++) path += ` L ${toPixel(a*y*y)} ${toPixelY(y)}`;
+                    graphSvg.innerHTML += `<path d="${path}" class="graph-path" fill="none" />`;
+                } else if (type === 3) { // Circle
+                    let r = getRandomInt(2, 4) * GRID_SIZE;
+                    graphSvg.innerHTML += `<circle cx="${MID}" cy="${MID}" r="${r}" class="graph-path" />`;
+                } else { // Discrete Fails (repeat x)
+                    let x = getRandomInt(-2, 2);
+                    graphSvg.innerHTML += `<circle cx="${toPixel(x)}" cy="${toPixelY(2)}" class="graph-point" />`;
+                    graphSvg.innerHTML += `<circle cx="${toPixel(x)}" cy="${toPixelY(-2)}" class="graph-point" />`;
+                    // Add noise
+                    graphSvg.innerHTML += `<circle cx="${toPixel(x+2)}" cy="${toPixelY(1)}" class="graph-point" />`;
+                    graphSvg.innerHTML += `<circle cx="${toPixel(x-2)}" cy="${toPixelY(-1)}" class="graph-point" />`;
+                }
+            }
+            return isFunction;
+        }
+
+        // 2. Table Generator
+        function generateTable() {
+            const isFunction = Math.random() < 0.5;
+            let rows = [];
+            
+            if (isFunction) {
+                // Unique X values
+                let startX = getRandomInt(-5, 0);
+                for(let i=0; i<5; i++) {
+                    rows.push({ x: startX + i, y: getRandomInt(-10, 10) });
+                }
+            } else {
+                // Repeat X values with different Y
+                let badX = getRandomInt(1, 5);
+                rows.push({ x: badX, y: 5 });
+                rows.push({ x: badX, y: 10 }); // Violation
+                rows.push({ x: badX + 1, y: 2 });
+                rows.push({ x: badX + 2, y: 8 });
+                rows.push({ x: badX + 3, y: -1 });
+                // Shuffle
+                rows.sort(() => Math.random() - 0.5);
+            }
+
+            let html = '';
+            rows.forEach(r => {
+                html += `<tr><td>${r.x}</td><td>${r.y}</td></tr>`;
+            });
+            tableBody.innerHTML = html;
+            return isFunction;
+        }
+
+        // 3. Pairs Generator
+        function generatePairs() {
+            const isFunction = Math.random() < 0.5;
+            let pairs = [];
+            
+            if (isFunction) {
+                let usedX = new Set();
+                while(pairs.length < 5) {
+                    let x = getRandomInt(-5, 5);
+                    if(!usedX.has(x)) {
+                        usedX.add(x);
+                        pairs.push(`(${x}, ${getRandomInt(-5, 5)})`);
+                    }
+                }
+            } else {
+                let badX = getRandomInt(-5, 5);
+                pairs.push(`(${badX}, 2)`);
+                pairs.push(`(${badX}, 8)`); // Violation
+                pairs.push(`(${badX+1}, 0)`);
+                pairs.push(`(${badX+2}, -3)`);
+                pairs.push(`(${badX-1}, 5)`);
+                // Shuffle
+                pairs.sort(() => Math.random() - 0.5);
+            }
+            
+            pairsDisplay.textContent = `{ ${pairs.join(', ')} }`;
+            return isFunction;
+        }
+
+        // --- Main Game Logic ---
+
+        function startNewRound() {
+            if(isGameOver) return;
+
+            // Reset
+            userSelections = [null, null, null];
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.classList.remove('selected', 'correct-answer', 'incorrect-answer');
+                btn.disabled = false;
+            });
+            feedbackArea.textContent = '';
+            checkBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+
+            // Generate
+            currentTruths[0] = generateGraph();
+            currentTruths[1] = generateTable();
+            currentTruths[2] = generatePairs();
+        }
+
+        // Handle Selection
+        window.selectChoice = function(cardIndex, isFunc) {
+            if(isGameOver) return;
+            userSelections[cardIndex] = isFunc;
+            
+            // Visual feedback
+            const card = document.getElementById(`card-${cardIndex}`);
+            const btns = card.querySelectorAll('.choice-btn');
+            // 0 is Func, 1 is Not
+            const targetIndex = isFunc ? 0 : 1;
+            
+            btns.forEach((btn, idx) => {
+                if(idx === targetIndex) btn.classList.add('selected');
+                else btn.classList.remove('selected');
+            });
+        };
+
+        function checkAnswers() {
+            // Validate
+            if(userSelections.includes(null)) {
+                feedbackArea.className = "h-8 mb-4 font-bold incorrect-text";
+                feedbackArea.textContent = "Please select an answer for all three problems.";
+                return;
+            }
+
+            let allCorrect = true;
+
+            // Grade each card
+            for(let i=0; i<3; i++) {
+                const correct = currentTruths[i]; // boolean
+                const selected = userSelections[i]; // boolean
+                
+                const card = document.getElementById(`card-${i}`);
+                const btns = card.querySelectorAll('.choice-btn');
+                const selectedBtn = btns[selected ? 0 : 1];
+                const correctBtn = btns[correct ? 0 : 1];
+
+                btns.forEach(b => b.disabled = true);
+
+                if(selected === correct) {
+                    selectedBtn.classList.add('correct-answer');
+                    selectedBtn.classList.remove('selected');
+                } else {
+                    selectedBtn.classList.add('incorrect-answer');
+                    selectedBtn.classList.remove('selected');
+                    correctBtn.classList.add('correct-answer'); // Show right answer
+                    allCorrect = false;
+                }
+            }
+
+            if(allCorrect) {
+                score++;
+                updateStats();
+                feedbackArea.className = "h-8 mb-4 font-bold correct-text";
+                feedbackArea.textContent = "Perfect! All identified correctly.";
+                checkBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                lives--;
+                updateStats();
+                feedbackArea.className = "h-8 mb-4 font-bold incorrect-text";
+                
+                if(lives <= 0) {
+                    isGameOver = true;
+                    feedbackArea.textContent = `Game Over! Final Score: ${score}`;
+                    checkBtn.classList.add('hidden');
+                    restartBtn.classList.remove('hidden');
+                } else {
+                    feedbackArea.textContent = "Not quite. Look at the green answers.";
+                    checkBtn.classList.add('hidden');
+                    nextBtn.classList.remove('hidden');
+                }
+            }
+        }
+
+        function restartGame() {
+            lives = 3; score = 0; isGameOver = false;
+            updateStats();
+            restartBtn.classList.add('hidden');
+            startNewRound();
+        }
+
+        // Events
+        checkBtn.addEventListener('click', checkAnswers);
+        nextBtn.addEventListener('click', startNewRound);
+        restartBtn.addEventListener('click', restartGame);
+
+        // Init
+        updateStats();
+        startNewRound();
+
+    </script>
+</body>
+</html>
