@@ -180,7 +180,7 @@
         let currentEquation = {};
         let clickedPoints = []; // Stores {x, y} cartesian coordinates
         let chosenLineStyle = null; // 'solid' or 'dashed'
-        let clickedShadeSide = null; // 'origin' or 'non-origin'
+        let clickedSideMatchesTestPoint = null; // Boolean: true if click is on same side as test point
         let nextEquationType = 'slopeIntercept'; // 'slopeIntercept' or 'standardForm'
 
         // --- Graphing Constants ---
@@ -307,24 +307,34 @@
         }
         
         // This function draws the shaded region.
-        function drawShadeRegion(m, b, side, id, shadeClass) {
-            // side is 'origin' or 'non-origin'
-            const { A, B, C, isOriginSideCorrect } = currentEquation;
+        function drawShadeRegion(m, b, sideMatchesTest, id, shadeClass) {
+            // sideMatchesTest: boolean. Does the side we want to shade contain the testPoint?
+            const { A, B, C, testPoint } = currentEquation;
             
             let shadeAbove = false;
-            // Test for y > ... or y < ...
-            // If B is negative (e.g., x - y > 2 => -y > -x + 2 => y < x - 2), 'greater than' means shade *below*.
-            // Let's test a point *above* the y-intercept.
-            const testPoint = {x: 0, y: b + 1}; // A point 1 unit *above* the y-intercept.
+            
+            // We need to determine if "Above" corresponds to "MatchesTest" or "!MatchesTest"
+            // Use a Probe point clearly above the line: (0, b + 1)
+            const probePoint = { x: 0, y: b + 1 };
+            const probeVal = A * probePoint.x + B * probePoint.y;
             const testVal = A * testPoint.x + B * testPoint.y;
-            // Is this test point on the origin side?
-            const originVal = A * 0 + B * 0;
-            const isTestPointOnOriginSide = (testVal - C) * (originVal - C) >= 0;
-
-            if (side === 'origin') {
-                shadeAbove = isTestPointOnOriginSide;
-            } else { // side === 'non-origin'
-                shadeAbove = !isTestPointOnOriginSide;
+            
+            // Is Probe on the same side as TestPoint?
+            // If (Probe - C) and (Test - C) have same sign, result is positive.
+            const isProbeSameAsTest = (probeVal - C) * (testVal - C) >= 0;
+            
+            // Logic:
+            // If we want to shade the side matching TestPoint (sideMatchesTest == true):
+            //    If Probe is also matching TestPoint -> Shade Above (where probe is).
+            //    If Probe is NOT matching TestPoint -> Shade Below.
+            // If we want to shade the side OPPOSITE TestPoint (sideMatchesTest == false):
+            //    If Probe is matching TestPoint -> Shade Below (Away from probe).
+            //    If Probe is NOT matching TestPoint -> Shade Above (Where probe is).
+            
+            if (sideMatchesTest) {
+                shadeAbove = isProbeSameAsTest;
+            } else {
+                shadeAbove = !isProbeSameAsTest;
             }
 
             // Get the 4 corner points of the polygon
@@ -386,8 +396,6 @@
                 B = -1;
                 C = -b;
                 // Adjust operator for B=-1 (when converting from slope intercept form)
-                // y > mx + b => mx - y < -b
-                // y < mx + b => mx - y > -b
                 let opForCheck;
                 if (inequalitySymbol === '>') opForCheck = '<';
                 if (inequalitySymbol === '<') opForCheck = '>';
@@ -402,16 +410,12 @@
                 nextEquationType = 'standardForm';
             } else {
                 // Generate Ax + By [op] C form
-                // From y = mx + b => -mx + y = b
                 if (m > 0) { // e.g., y = 2x + 3  =>  -2x + y = 3 => 2x - y = -3
                     A = m; B = -1; C = -b;
                 } else { // e.g., y = -2x + 3 =>  2x + y = 3
                     A = -m; B = 1; C = b;
                 }
                 
-                // --- FIX: DO NOT FLIP SYMBOL FOR STANDARD FORM CHECK ---
-                // When presented in Standard Form (Ax + By > C), we check the logic exactly as displayed.
-                // We do NOT flip the inequality symbol for the truth check, even if B is negative.
                 let opForCheck = inequalitySymbol;
 
                 let A_str = (A === 1) ? "x" : `${A}x`;
@@ -422,15 +426,24 @@
                 nextEquationType = 'slopeIntercept';
             }
 
-            // Final step: determine if origin (0,0) is a solution
-            const originVal = 0; // A*0 + B*0
+            // Final step: determine solution region.
+            // BUG FIX: If line passes through origin (C=0), we cannot use (0,0) as test point.
+            // We use (1,0) as fallback. Since m != 0, line is never y=0, so (1,0) is safe.
+            let testPoint = { x: 0, y: 0 };
+            if (currentEquation.C === 0) {
+                testPoint = { x: 1, y: 0 };
+            }
+            
+            const testVal = currentEquation.A * testPoint.x + currentEquation.B * testPoint.y;
             const C_val = currentEquation.C;
             const op = currentEquation.inequalitySymbol;
 
-            if (op === '<') currentEquation.isOriginSideCorrect = (originVal < C_val);
-            if (op === '>') currentEquation.isOriginSideCorrect = (originVal > C_val);
-            if (op === '≤') currentEquation.isOriginSideCorrect = (originVal <= C_val);
-            if (op === '≥') currentEquation.isOriginSideCorrect = (originVal >= C_val);
+            if (op === '<') currentEquation.isTestPointSideCorrect = (testVal < C_val);
+            if (op === '>') currentEquation.isTestPointSideCorrect = (testVal > C_val);
+            if (op === '≤') currentEquation.isTestPointSideCorrect = (testVal <= C_val);
+            if (op === '≥') currentEquation.isTestPointSideCorrect = (testVal >= C_val);
+            
+            currentEquation.testPoint = testPoint;
 
             resetState();
         }
@@ -459,19 +472,20 @@
                 graphContainer.style.pointerEvents = 'none'; // Disable graph clicks
             } else if (clickedPoints.length === 2 && chosenLineStyle) {
                 // Third click (shading)
-                const { A, B, C, isOriginSideCorrect } = currentEquation;
+                const { A, B, C, testPoint } = currentEquation;
                 
-                // Check which side was clicked
+                // Check which side was clicked relative to the test point
                 const clickVal = A * p.x + B * p.y;
-                const originVal = 0; // A*0 + B*0
+                const testVal = A * testPoint.x + B * testPoint.y;
                 
-                // Check if clickVal and originVal are on the same side of C
-                const isClickOnOriginSide = (clickVal - C) * (originVal - C) >= 0;
-                clickedShadeSide = isClickOnOriginSide ? 'origin' : 'non-origin';
+                // Check if click is on same side as test point
+                // Note: If C=0, testVal is not 0 (because we shifted testPoint to 1,0), so this calculation is safe.
+                const isClickOnSameSideAsTest = (clickVal - C) * (testVal - C) >= 0;
+                clickedSideMatchesTestPoint = isClickOnSameSideAsTest;
                 
                 // Draw the shade
                 const { m, b } = getLineFromPoints(clickedPoints[0], clickedPoints[1]);
-                drawShadeRegion(m, b, clickedShadeSide, 'student-shade', 'shade-region');
+                drawShadeRegion(m, b, clickedSideMatchesTestPoint, 'student-shade', 'shade-region');
 
                 instructionText.textContent = "Check your work!";
                 checkBtn.classList.remove('hidden');
@@ -508,7 +522,7 @@
         function resetState() {
             clickedPoints = [];
             chosenLineStyle = null;
-            clickedShadeSide = null;
+            clickedSideMatchesTestPoint = null;
             clearStudentDrawings();
             
             graphContainer.style.pointerEvents = 'auto'; // Re-enable clicks
@@ -526,7 +540,7 @@
         function checkAnswer() {
             const p1 = clickedPoints[0];
             const p2 = clickedPoints[1];
-            const { m, b, isSolid, isOriginSideCorrect } = currentEquation;
+            const { m, b, isSolid, isTestPointSideCorrect } = currentEquation;
 
             // Check 1: Is the y-intercept correct?
             const isInterceptCorrect = (p1.x === 0 && p1.y === b);
@@ -539,7 +553,8 @@
             const isStyleCorrect = (chosenLineStyle === (isSolid ? 'solid' : 'dashed'));
 
             // Check 4: Is the shading correct?
-            const isShadeCorrect = (clickedShadeSide === 'origin') === isOriginSideCorrect;
+            // The student is correct if their click (relative to test point) matches the correct logic (relative to test point)
+            const isShadeCorrect = (clickedSideMatchesTestPoint === isTestPointSideCorrect);
 
             checkBtn.classList.add('hidden');
             resetBtn.classList.add('hidden');
@@ -554,8 +569,8 @@
                 clearStudentDrawings();
                 let correctLineClass = isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
                 drawFullLine(m, b, 'answer-line', correctLineClass);
-                let correctSide = isOriginSideCorrect ? 'origin' : 'non-origin';
-                drawShadeRegion(m, b, correctSide, 'answer-shade', 'correct-shade');
+                
+                drawShadeRegion(m, b, isTestPointSideCorrect, 'answer-shade', 'correct-shade');
                 
                 nextBtn.classList.remove('hidden');
             } else {
@@ -575,11 +590,11 @@
                     feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
                     // Show the correct answer
                     clearStudentDrawings();
-                    // OLD: let correctLineClass = isSolid ? 'correct-line' : 'correct-line-dashed';
-                    let correctLineClass = isSolid ? 'correct-line' : 'correct-line correct-line-dashed'; // NEW: Added space
+                    
+                    let correctLineClass = isSolid ? 'correct-line' : 'correct-line correct-line-dashed'; 
                     drawFullLine(m, b, 'answer-line', correctLineClass);
-                    let correctSide = isOriginSideCorrect ? 'origin' : 'non-origin';
-                    drawShadeRegion(m, b, correctSide, 'answer-shade', 'correct-shade');
+                    
+                    drawShadeRegion(m, b, isTestPointSideCorrect, 'answer-shade', 'correct-shade');
                     restartBtn.classList.remove('hidden');
                 } else {
                     // Try again
