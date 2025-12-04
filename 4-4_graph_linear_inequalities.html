@@ -300,23 +300,15 @@
             line.setAttribute('x2', px2.x);
             line.setAttribute('y2', px2.y);
             
-            // OLD: line.classList.add(lineClass);
-            const classes = lineClass.split(' '); // NEW: Split the string by spaces
-            line.classList.add(...classes); // NEW: Use spread operator to add each class individually
+            const classes = lineClass.split(' '); 
+            line.classList.add(...classes); 
             
-            // This 'if' block is no longer needed as the classes are passed in lineClass
-            /*
-            if (lineClass.includes('dashed')) {
-                line.classList.add(lineClass.replace('student-line', 'student-line-dashed').replace('correct-line', 'correct-line-dashed'));
-            }
-            */
             svgGrid.appendChild(line);
         }
         
-        // This function draws the shaded region. It's complex.
+        // This function draws the shaded region.
         function drawShadeRegion(m, b, side, id, shadeClass) {
             // side is 'origin' or 'non-origin'
-            // We need to know if the origin side is "above" or "below"
             const { A, B, C, isOriginSideCorrect } = currentEquation;
             
             let shadeAbove = false;
@@ -393,7 +385,7 @@
                 A = m;
                 B = -1;
                 C = -b;
-                // Adjust operator for B=-1
+                // Adjust operator for B=-1 (when converting from slope intercept form)
                 // y > mx + b => mx - y < -b
                 // y < mx + b => mx - y > -b
                 let opForCheck;
@@ -417,14 +409,10 @@
                     A = -m; B = 1; C = b;
                 }
                 
+                // --- FIX: DO NOT FLIP SYMBOL FOR STANDARD FORM CHECK ---
+                // When presented in Standard Form (Ax + By > C), we check the logic exactly as displayed.
+                // We do NOT flip the inequality symbol for the truth check, even if B is negative.
                 let opForCheck = inequalitySymbol;
-                // If B is negative, we must flip the inequality sign for our *check*
-                if (B < 0) {
-                    if (inequalitySymbol === '>') opForCheck = '<';
-                    else if (inequalitySymbol === '<') opForCheck = '>';
-                    else if (inequalitySymbol === '≥') opForCheck = '≤';
-                    else if (inequalitySymbol === '≤') opForCheck = '≥';
-                }
 
                 let A_str = (A === 1) ? "x" : `${A}x`;
                 let B_str = (B === 1) ? "+ y" : (B === -1) ? "- y" : (B > 0) ? `+ ${B}y` : `- ${Math.abs(B)}y`;
