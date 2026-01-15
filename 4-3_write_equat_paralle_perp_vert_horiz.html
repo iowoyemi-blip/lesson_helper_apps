@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale-1.0">
     <title>Advanced Linear Equation Practice</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Use the Inter font family */
@@ -69,28 +68,7 @@
             color: #4b5563; /* gray-600 */
             cursor: not-allowed;
         }
-        /* Graph styles */
-        .graph-container {
-            width: 100%;
-            max-width: 300px;
-            margin: 1rem auto;
-            position: relative;
-            aspect-ratio: 1 / 1;
-            border: 1px solid #ccc;
-            background-color: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .graph-container svg {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        .grid-line { stroke: #e5e7eb; stroke-width: 1; }
-        .axis-line { stroke: #4b5563; stroke-width: 2; }
-        .function-line { stroke: #dc2626; stroke-width: 3; fill: none; }
-        .axis-label { font-family: 'Inter', sans-serif; font-size: 10px; fill: #4b5563; }
     </style>
-    <!-- Import Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -98,35 +76,27 @@
 <body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
 
     <div class="max-w-lg w-full">
-        <!-- Header -->
         <header class="mb-6">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Advanced Linear Practice</h1>
-            <p class="text-lg text-gray-600 text-center mt-2">Parallel, Perpendicular, & Special Lines</p>
-            <!-- Game Stats: Lives and Score -->
+            <p class="text-lg text-gray-600 text-center mt-2">Standard Form & Point-Slope</p>
             <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
                 <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
                 <div id="score-counter" class="text-blue-600">Score: 0</div>
             </div>
         </header>
 
-        <!-- Quiz Card -->
         <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
-            <!-- Question Area -->
             <div id="quiz-area" class="space-y-6">
                 
-                <!-- Given Problem -->
-                <div class="text-center min-h-[150px] flex flex-col justify-center">
+                <div class="text-center min-h-[120px] flex flex-col justify-center">
                     <p class="text-lg text-gray-600">Problem:</p>
                     <div id="problem-statement" class="my-2 text-lg text-gray-800">
-                        <!-- Problem will be inserted here -->
-                    </div>
+                        </div>
                 </div>
                 
-                <!-- Answer Input Area -->
                 <div class="border-t border-gray-200 pt-6">
                     <p class="text-lg text-gray-600 text-center mb-4">Write the equation of the line:</p>
                     
-                    <!-- Answer format 1: y = mx + b -->
                     <div id="slope-intercept-answer" class="hidden flex items-center justify-center space-x-2 text-3xl font-bold" style="font-family: 'Times New Roman', Times, serif;">
                         <span>y =</span>
                         <input type="text" id="m-input" class="answer-input" placeholder="e.g. -1/2">
@@ -134,31 +104,15 @@
                         <input type="number" step="any" id="b-input" class="answer-input" placeholder="e.g. 3">
                     </div>
 
-                    <!-- Answer format 2: x = c / y = c (New) -->
                     <div id="special-line-answer" class="hidden flex items-center justify-center space-x-2 text-3xl font-bold" style="font-family: 'Times New Roman', Times, serif;">
                         <input type="text" id="special-input" class="equation-input" placeholder="e.g. x=3">
                     </div>
-
-                    <!-- Answer format 2: x = c (Old - Will be hidden) -->
-                    <div id="vertical-line-answer" class="hidden flex items-center justify-center space-x-2 text-3xl font-bold" style="font-family: 'Times New Roman', Times, serif;">
-                        <span>x =</span>
-                        <input type="number" id="x-input" class="answer-input">
-                    </div>
-
-                    <!-- Answer format 3: y = c (Old - Will be hidden) -->
-                    <div id="horizontal-line-answer" class="hidden flex items-center justify-center space-x-2 text-3xl font-bold" style="font-family: 'Times New Roman', Times, serif;">
-                        <span>y =</span>
-                        <input type="number" id="y-input" class="answer-input">
-                    </div>
                 </div>
 
-                <!-- Feedback Area -->
                 <div id="feedback-area" class="">
-                    <!-- Feedback and Solution will be injected here -->
-                </div>
+                    </div>
             </div>
 
-            <!-- Button Area -->
             <div class="mt-6 flex flex-col sm:flex-row gap-4">
                 <button id="check-btn" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-md flex-1">
                     Check Answer
@@ -175,25 +129,20 @@
         const problemStatement = document.getElementById('problem-statement');
         const feedbackArea = document.getElementById('feedback-area');
         const checkBtn = document.getElementById('check-btn');
-        const nextBtn = document.getElementById('next-btn'); // Fixed: Was 'nextBtn'
+        const nextBtn = document.getElementById('next-btn');
         const livesCounter = document.getElementById('lives-counter');
         const scoreCounter = document.getElementById('score-counter');
         
         // Answer Inputs
         const mInput = document.getElementById('m-input');
         const bInput = document.getElementById('b-input');
-        const xInput = document.getElementById('x-input'); // This is no longer the primary input
-        const yInput = document.getElementById('y-input'); // This is no longer the primary input
-        const specialInput = document.getElementById('special-input'); // New input
+        const specialInput = document.getElementById('special-input');
 
         // Answer Format Divs
         const slopeInterceptAnswer = document.getElementById('slope-intercept-answer');
-        const verticalLineAnswer = document.getElementById('vertical-line-answer'); // Will no longer be used
-        const horizontalLineAnswer = document.getElementById('horizontal-line-answer'); // Will no longer be used
-        const specialLineAnswer = document.getElementById('special-line-answer'); // New container
+        const specialLineAnswer = document.getElementById('special-line-answer');
 
         // --- State Variables ---
-        let correctM, correctB, correctX, correctY;
         let currentQuestion = {};
         let currentSkill = -1; // Start at -1 to begin with skill 0
         let lives = 3;
@@ -211,40 +160,61 @@
             return num;
         }
 
-        /**
-         * Parses a string that could be a fraction (e.g., "1/2") or a decimal/integer.
-         */
+        // GCD for simplifying fractions
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        function simplifyFraction(numerator, denominator) {
+            const divisor = Math.abs(gcd(numerator, denominator));
+            return {
+                n: numerator / divisor,
+                d: denominator / divisor
+            };
+        }
+
         function parseFraction(str) {
             if (typeof str !== 'string' || !str) return NaN;
             str = str.trim();
-            
-            // Check if it's already a decimal/integer
-            if (!str.includes('/')) {
-                return parseFloat(str);
-            }
-            
-            // It's a fraction
+            if (!str.includes('/')) return parseFloat(str);
             const parts = str.split('/');
-            if (parts.length !== 2) return NaN; // Invalid format like "1/2/3"
-            
+            if (parts.length !== 2) return NaN;
             const num = parseFloat(parts[0]);
             const den = parseFloat(parts[1]);
-            
-            if (isNaN(num) || isNaN(den) || den === 0) {
-                return NaN; // Invalid numbers or division by zero
-            }
-            
+            if (isNaN(num) || isNaN(den) || den === 0) return NaN;
             return num / den;
         }
 
+        function formatStandardForm(A, B, C) {
+            // Ax + By = C
+            let aStr = '';
+            if (A === 1) aStr = 'x';
+            else if (A === -1) aStr = '-x';
+            else if (A !== 0) aStr = `${A}x`;
 
-        /**
-         * Formats a y = mx + b equation string
-         */
+            let bStr = '';
+            if (B === 1) bStr = A !== 0 ? ' + y' : 'y';
+            else if (B === -1) bStr = ' - y';
+            else if (B > 0) bStr = A !== 0 ? ` + ${B}y` : `${B}y`;
+            else if (B < 0) bStr = ` - ${Math.abs(B)}y`;
+
+            return `<strong class="math-display">${aStr}${bStr} = ${C}</strong>`;
+        }
+
         function formatSlopeIntercept(m, b) {
+            // Handling fractions for display if needed, but simple m/b is okay for feedback
             let mStr = (m === 1) ? 'x' : (m === -1) ? '-x' : `${m}x`;
             let bStr = (b === 0) ? '' : (b > 0) ? ` + ${b}` : ` - ${Math.abs(b)}`;
             return `<strong class="math-display">y = ${mStr}${bStr}</strong>`;
+        }
+        
+        // Helper to format signs for Point Slope Feedback: (x - x1)
+        function formatPointParen(val) {
+            return val < 0 ? `(${val})` : `${val}`;
+        }
+        
+        function formatPointSlopeTerm(val) {
+             return val < 0 ? `+ ${Math.abs(val)}` : `- ${val}`;
         }
 
         function updateStatsDisplay() {
@@ -252,190 +222,127 @@
             scoreCounter.innerHTML = `Score: ${score}`;
         }
 
-        /**
-         * Creates an SVG graph for a horizontal or vertical line.
-         */
-        function createSvgGraph(type, value) {
-            const size = 300;
-            const gridSize = 30;
-            const numGrids = size / gridSize;
-            const mid = size / 2;
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-            svg.setAttribute('aria-hidden', 'true');
-
-            // Draw grid lines
-            for (let i = 0; i <= numGrids; i++) {
-                let y = i * gridSize;
-                let hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                hLine.setAttribute('x1', '0'); hLine.setAttribute('y1', y);
-                hLine.setAttribute('x2', size); hLine.setAttribute('y2', y);
-                hLine.classList.add('grid-line');
-                svg.appendChild(hLine);
-
-                let x = i * gridSize;
-                let vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                vLine.setAttribute('x1', x); vLine.setAttribute('y1', '0');
-                vLine.setAttribute('x2', x); vLine.setAttribute('y2', size);
-                vLine.classList.add('grid-line');
-                svg.appendChild(vLine);
-            }
-
-            // Draw axes
-            let xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            xAxis.setAttribute('x1', '0'); xAxis.setAttribute('y1', mid);
-            xAxis.setAttribute('x2', size); xAxis.setAttribute('y2', mid);
-            xAxis.classList.add('axis-line');
-            svg.appendChild(xAxis);
-
-            let yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            yAxis.setAttribute('x1', mid); yAxis.setAttribute('y1', '0');
-            yAxis.setAttribute('x2', mid); yAxis.setAttribute('y2', size);
-            yAxis.classList.add('axis-line');
-            svg.appendChild(yAxis);
-
-            // Add axis labels (simplified)
-            function addLabel(x, y, text) {
-                let label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                label.setAttribute('x', x);
-                label.setAttribute('y', y);
-                label.setAttribute('text-anchor', 'middle');
-                label.setAttribute('dominant-baseline', 'central');
-                label.textContent = text;
-                label.classList.add('axis-label');
-                svg.appendChild(label);
-            }
-            addLabel(mid + gridSize, mid + 12, '1'); // x=1
-            addLabel(mid - 12, mid - gridSize, '1'); // y=1
-            addLabel(size - 10, mid + 12, 'x'); // x-axis
-            addLabel(mid - 12, 10, 'y'); // y-axis
-
-            // Draw the function line
-            let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            if (type === 'vertical') {
-                let x_svg = mid + value * gridSize;
-                line.setAttribute('x1', x_svg); line.setAttribute('y1', '0');
-                line.setAttribute('x2', x_svg); line.setAttribute('y2', size);
-            } else { // horizontal
-                let y_svg = mid - value * gridSize;
-                line.setAttribute('x1', '0'); line.setAttribute('y1', y_svg);
-                line.setAttribute('x2', size); line.setAttribute('y2', y_svg);
-            }
-            line.classList.add('function-line');
-            svg.appendChild(line);
-
-            const graphContainer = document.createElement('div');
-            graphContainer.classList.add('graph-container');
-            graphContainer.appendChild(svg);
-            return graphContainer;
-        }
-
-
         // --- Question Generation Logic ---
         function generateQuestion() {
             if (isGameOver) return;
 
-            // Clear inputs and feedback
-            mInput.value = ''; bInput.value = ''; xInput.value = ''; yInput.value = '';
-            specialInput.value = ''; // Clear new input
+            // Reset UI
+            mInput.value = ''; bInput.value = ''; specialInput.value = '';
             feedbackArea.innerHTML = '';
-            mInput.classList.remove('correct-answer', 'incorrect-answer');
-            bInput.classList.remove('correct-answer', 'incorrect-answer');
-            xInput.classList.remove('correct-answer', 'incorrect-answer');
-            yInput.classList.remove('correct-answer', 'incorrect-answer');
-            specialInput.classList.remove('correct-answer', 'incorrect-answer'); // Clear new input style
-            
-            // Disable all inputs
-            mInput.disabled = false; bInput.disabled = false; xInput.disabled = false; yInput.disabled = false;
-            specialInput.disabled = false; // Enable new input
+            [mInput, bInput, specialInput].forEach(el => {
+                el.classList.remove('correct-answer', 'incorrect-answer');
+                el.disabled = false;
+            });
 
-            // Hide all answer formats
             slopeInterceptAnswer.classList.add('hidden');
-            verticalLineAnswer.classList.add('hidden'); // Keep hidden
-            horizontalLineAnswer.classList.add('hidden'); // Keep hidden
-            specialLineAnswer.classList.add('hidden'); // Hide new format
+            specialLineAnswer.classList.add('hidden');
             
             checkBtn.disabled = false;
             checkBtn.classList.remove('hidden');
             nextBtn.classList.add('hidden');
             hasLostLifeThisQuestion = false;
             
-            // Cycle to the next skill (0, 1, 2, 3)
-            currentSkill = (currentSkill + 1) % 4;
+            // Cycle skills: 0=Parallel(Std), 1=Perp(Std), 2=Special Lines
+            currentSkill = (currentSkill + 1) % 3;
             currentQuestion = { skillType: currentSkill };
-            problemStatement.innerHTML = ''; // Clear previous graph/text
+            problemStatement.innerHTML = '';
 
-            let m_given, b_given, m_correct, b_correct, x1, y1;
-            
-            if (currentSkill === 0) {
-                // Skill 0: Parallel line
-                m_given = getRandomInt(-5, 5, [0]);
-                b_given = getRandomInt(-10, 10);
+            let A, B, C, m_given, m_correct, x1, y1, b_correct;
+
+            if (currentSkill === 0 || currentSkill === 1) { // Standard Form Parallel/Perp
+                // 1. Generate a nice slope first
+                let num = getRandomInt(1, 4) * (Math.random() < 0.5 ? 1 : -1);
+                let den = getRandomInt(1, 3);
+                m_given = num / den; // The slope of the given line
+
+                // 2. Convert slope to A and B for Ax + By = C
+                // m = -A/B.  If m = 2/3, -A/B = 2/3 -> A=-2, B=3 OR A=2, B=-3
+                // We want standard form A > 0 usually, but let's just make sure they are integers.
+                // simplify fraction first
+                let frac = simplifyFraction(num, den);
+                // m = n/d.  -A/B = n/d.  Let A = n, B = -d.
+                A = frac.n;
+                B = -frac.d;
+                
+                // Randomize signs to vary appearance, keep equality valid
+                if (Math.random() < 0.5) { A = -A; B = -B; }
+                
+                C = getRandomInt(-20, 20); // The C constant for the given line
+
+                // 3. Generate the point (x1, y1)
                 x1 = getRandomInt(-10, 10);
                 y1 = getRandomInt(-10, 10);
-                
-                // Ensure point is not on the original line
-                while (y1 === m_given * x1 + b_given) {
-                    y1 = getRandomInt(-10, 10);
+
+                // Calculate Correct M
+                if (currentSkill === 0) { // Parallel
+                    m_correct = m_given;
+                } else { // Perpendicular
+                     m_correct = -1 / m_given;
                 }
 
-                correctM = m_given;
-                correctB = y1 - correctM * x1;
-                
-                currentQuestion = { ...currentQuestion, m_given, b_given, x1, y1, correctM, correctB };
+                // Calculate Correct B
+                b_correct = y1 - m_correct * x1;
 
+                currentQuestion = {
+                    skillType: currentSkill,
+                    A, B, C, x1, y1, m_given, m_correct, b_correct
+                };
+
+                const type = currentSkill === 0 ? "parallel" : "perpendicular";
                 problemStatement.innerHTML = `
-                    <p>Find the equation of a line that is <strong>parallel</strong> to the line ${formatSlopeIntercept(m_given, b_given)}</p>
-                    <p>and passes through the point <strong class="math-display">(${x1}, ${y1})</strong>.</p>
+                    <p>Find the equation of a line that is <strong>${type}</strong> to:</p>
+                    ${formatStandardForm(A, B, C)}
+                    <p class="mt-2">and passes through <strong class="math-display">(${x1}, ${y1})</strong>.</p>
                 `;
                 slopeInterceptAnswer.classList.remove('hidden');
                 mInput.focus();
 
-            } else if (currentSkill === 1) {
-                // Skill 1: Perpendicular line
-                // Work backwards to get nice numbers
-                let m_correct_num = getRandomInt(1, 3) * (Math.random() < 0.5 ? 1 : -1); // e.g., -1
-                let m_correct_den = getRandomInt(1, 3); // e.g., 2
-                correctM = m_correct_num / m_correct_den; // e.g., -1/2 = -0.5
+            } else { // Special Lines (Vertical/Horizontal mixed)
+                // Randomly decide: Parallel or Perpendicular
+                const isParallel = Math.random() < 0.5;
+                // Randomly decide: Given line is Vertical (x=c) or Horizontal (y=c)
+                const isGivenVertical = Math.random() < 0.5; 
                 
-                let m_given_num = m_correct_den; // e.g., 2
-                let m_given_den = -m_correct_num; // e.g., 1
-                m_given = m_given_num / m_given_den; // e.g., 2/1 = 2
-                
-                b_given = getRandomInt(-10, 10);
-                correctB = getRandomInt(-10, 10);
-                
-                // Find a point on the new line with integer coords
-                x1 = getRandomInt(-5, 5, [0]) * m_correct_den; // e.g., x1 = 2, 4, -2...
-                y1 = correctM * x1 + correctB;
+                const givenVal = getRandomInt(-9, 9);
+                x1 = getRandomInt(-10, 10);
+                y1 = getRandomInt(-10, 10);
 
-                currentQuestion = { ...currentQuestion, m_given, b_given, x1, y1, correctM, correctB };
-                
+                let targetType = ''; // 'x=' or 'y='
+                let targetVal = 0;
+
+                // Logic Matrix:
+                // Given Vertical (x=c) + Parallel -> Result Vertical (x = x1)
+                // Given Vertical (x=c) + Perp     -> Result Horizontal (y = y1)
+                // Given Horiz (y=c)    + Parallel -> Result Horizontal (y = y1)
+                // Given Horiz (y=c)    + Perp     -> Result Vertical (x = x1)
+
+                if (isGivenVertical) {
+                    if (isParallel) { targetType = 'x'; targetVal = x1; } 
+                    else { targetType = 'y'; targetVal = y1; }
+                } else { // Given Horizontal
+                    if (isParallel) { targetType = 'y'; targetVal = y1; }
+                    else { targetType = 'x'; targetVal = x1; }
+                }
+
+                currentQuestion = {
+                    skillType: 2,
+                    isParallel,
+                    isGivenVertical,
+                    givenVal,
+                    x1, y1,
+                    targetType,
+                    targetVal
+                };
+
+                const relationText = isParallel ? "parallel" : "perpendicular";
+                const lineEq = isGivenVertical ? `x = ${givenVal}` : `y = ${givenVal}`;
+
                 problemStatement.innerHTML = `
-                    <p>Find the equation of a line that is <strong>perpendicular</strong> to the line ${formatSlopeIntercept(m_given, b_given)}</p>
-                    <p>and passes through the point <strong class="math-display">(${x1}, ${y1})</strong>.</p>
+                    <p>Find the equation of a line that is <strong>${relationText}</strong> to the line:</p>
+                    <p><strong class="math-display">${lineEq}</strong></p>
+                    <p>and passes through <strong class="math-display">(${x1}, ${y1})</strong>.</p>
                 `;
-                slopeInterceptAnswer.classList.remove('hidden');
-                mInput.focus();
-
-            } else if (currentSkill === 2) {
-                // Skill 2: Vertical line from graph
-                correctX = getRandomInt(-5, 5);
-                currentQuestion = { ...currentQuestion, correctX };
-
-                problemStatement.innerHTML = `<p>Write the equation of the line shown in the graph.</p>`;
-                problemStatement.appendChild(createSvgGraph('vertical', correctX));
-                specialLineAnswer.classList.remove('hidden'); // Show new format
-                specialInput.focus();
-
-            } else {
-                // Skill 3: Horizontal line from graph
-                correctY = getRandomInt(-5, 5);
-                currentQuestion = { ...currentQuestion, correctY };
-
-                problemStatement.innerHTML = `<p>Write the equation of the line shown in the graph.</p>`;
-                problemStatement.appendChild(createSvgGraph('horizontal', correctY));
-                specialLineAnswer.classList.remove('hidden'); // Show new format
+                specialLineAnswer.classList.remove('hidden');
                 specialInput.focus();
             }
         }
@@ -446,115 +353,124 @@
             nextBtn.classList.remove('hidden');
 
             let isCorrect = false;
-            let solutionHtml = '<div class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">';
+            let solutionHtml = '<div class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200 text-left">';
             solutionHtml += '<h4 class="font-semibold text-gray-700 mb-2">Step-by-Step Solution:</h4>';
             const q = currentQuestion;
 
-            if (q.skillType === 0) { // Parallel
-                const userM = parseFraction(mInput.value); // Use parseFraction
+            if (q.skillType === 0 || q.skillType === 1) { // Standard Form Problems
+                const userM = parseFraction(mInput.value);
                 const userB = parseFloat(bInput.value);
                 
                 if (isNaN(userM) || isNaN(userB)) {
-                    feedbackArea.innerHTML = `<p class="incorrect-text text-center">Please enter a number for both 'm' and 'b'.</p>`;
-                    return; // Don't run solution logic or deduct lives yet
-                }
-                
-                const isMCorrect = Math.abs(userM - q.correctM) < FLOATING_POINT_TOLERANCE;
-                const isBCorrect = Math.abs(userB - q.correctB) < FLOATING_POINT_TOLERANCE;
-                isCorrect = isMCorrect && isBCorrect;
-                
-                mInput.classList.toggle('correct-answer', isMCorrect);
-                mInput.classList.toggle('incorrect-answer', !isMCorrect);
-                bInput.classList.toggle('correct-answer', isBCorrect);
-                bInput.classList.toggle('incorrect-answer', !isBCorrect);
-
-                solutionHtml += `<p class="text-gray-600">1. Parallel lines have the <strong>same slope</strong>. The slope of the given line ${formatSlopeIntercept(q.m_given, q.b_given)} is <strong class="math-display">m = ${q.m_given}</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">2. Our new line's slope is also <strong class="math-display">m = ${q.correctM}</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">3. Use <strong class="math-display">y = mx + b</strong> and plug in the slope and the point <strong class="math-display">(${q.x1}, ${q.y1})</strong>:</p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">${q.y1} = ${q.correctM}(${q.x1}) + b</strong></p>`;
-                solutionHtml += `<p class="text-gray-600">4. Solve for <strong class="math-display">b</strong>:</p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">${q.y1} = ${q.correctM * q.x1} + b</strong></p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">b = ${q.y1} - ${q.correctM * q.x1} = ${q.correctB}</strong></p>`;
-
-            } else if (q.skillType === 1) { // Perpendicular
-                const userM = parseFraction(mInput.value); // Use parseFraction
-                const userB = parseFloat(bInput.value);
-
-                if (isNaN(userM) || isNaN(userB)) {
-                    feedbackArea.innerHTML = `<p class="incorrect-text text-center">Please enter a number for both 'm' and 'b'.</p>`;
+                    feedbackArea.innerHTML = `<p class="incorrect-text text-center">Please enter valid numbers/fractions.</p>`;
                     return;
                 }
-
-                const isMCorrect = Math.abs(userM - q.correctM) < FLOATING_POINT_TOLERANCE;
-                const isBCorrect = Math.abs(userB - q.correctB) < FLOATING_POINT_TOLERANCE;
+                
+                const isMCorrect = Math.abs(userM - q.m_correct) < FLOATING_POINT_TOLERANCE;
+                const isBCorrect = Math.abs(userB - q.b_correct) < FLOATING_POINT_TOLERANCE;
                 isCorrect = isMCorrect && isBCorrect;
 
                 mInput.classList.toggle('correct-answer', isMCorrect);
                 mInput.classList.toggle('incorrect-answer', !isMCorrect);
                 bInput.classList.toggle('correct-answer', isBCorrect);
                 bInput.classList.toggle('incorrect-answer', !isBCorrect);
-                
-                solutionHtml += `<p class="text-gray-600">1. Perpendicular lines have <strong>opposite reciprocal</strong> slopes. The slope of ${formatSlopeIntercept(q.m_given, q.b_given)} is <strong class="math-display">m = ${q.m_given}</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">2. The opposite reciprocal is <strong class="math-display">m = ${q.correctM}</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">3. Use <strong class="math-display">y = mx + b</strong> and plug in the new slope and the point <strong class="math-display">(${q.x1}, ${q.y1})</strong>:</p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">${q.y1} = ${q.correctM}(${q.x1}) + b</strong></p>`;
-                solutionHtml += `<p class="text-gray-600">4. Solve for <strong class="math-display">b</strong>:</p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">${q.y1} = ${q.correctM * q.x1} + b</strong></p>`;
-                solutionHtml += `<p class="text-gray-600 text-center my-1"><strong class="math-display">b = ${q.y1} - ${q.correctM * q.x1} = ${q.correctB}</strong></p>`;
 
-            } else if (q.skillType === 2) { // Vertical
-                const userAnswer = specialInput.value.toLowerCase().replace(/\s/g, '');
-                const correctAnswerString = `x=${q.correctX}`;
-                isCorrect = (userAnswer === correctAnswerString);
+                // --- Standard Form Conversion Steps ---
+                solutionHtml += `<p class="text-gray-700 font-bold">Step 1: Find slope of given line.</p>`;
+                solutionHtml += `<div class="ml-4 text-gray-600">`;
+                solutionHtml += `<p>Given: ${formatStandardForm(q.A, q.B, q.C)}</p>`;
+                solutionHtml += `<p>Solve for y to get slope-intercept form:</p>`;
                 
+                // Show standard form manipulation
+                if (q.B !== 0) {
+                     solutionHtml += `<p>${q.B}y = ${-q.A}x + ${q.C}</p>`;
+                     solutionHtml += `<p>y = ${-q.A}/${q.B}x + ${q.C}/${q.B}</p>`;
+                     solutionHtml += `<p>So, <strong class="math-display">m = ${q.m_given}</strong></p>`;
+                } else {
+                     solutionHtml += `<p>This is a vertical line (Special Case).</p>`;
+                }
+                solutionHtml += `</div>`;
+
+                // --- Relation Step ---
+                solutionHtml += `<p class="text-gray-700 font-bold mt-2">Step 2: Determine new slope.</p>`;
+                if (q.skillType === 0) {
+                    solutionHtml += `<p class="ml-4 text-gray-600">Since lines are <strong>parallel</strong>, slopes are equal.</p>`;
+                    solutionHtml += `<p class="ml-4 text-gray-600">New Slope <strong class="math-display">m = ${q.m_correct}</strong></p>`;
+                } else {
+                     solutionHtml += `<p class="ml-4 text-gray-600">Since lines are <strong>perpendicular</strong>, use opposite reciprocal.</p>`;
+                    solutionHtml += `<p class="ml-4 text-gray-600">Opposite of ${q.m_given} is ${-q.m_given}. Reciprocal is ${-1/q.m_given}.</p>`;
+                    solutionHtml += `<p class="ml-4 text-gray-600">New Slope <strong class="math-display">m = ${q.m_correct}</strong></p>`;
+                }
+
+                // --- Point-Slope Form Steps (Requested Modification) ---
+                solutionHtml += `<p class="text-gray-700 font-bold mt-2">Step 3: Use Point-Slope Form.</p>`;
+                solutionHtml += `<div class="ml-4 text-gray-600">`;
+                solutionHtml += `<p>Formula: <strong class="math-display">y - y_1 = m(x - x_1)</strong></p>`;
+                
+                // Substitution
+                solutionHtml += `<p>Substitute m=${q.m_correct}, x_1=${q.x1}, y_1=${q.y1}:</p>`;
+                solutionHtml += `<p><strong class="math-display">y - ${formatPointParen(q.y1)} = ${q.m_correct}(x - ${formatPointParen(q.x1)})</strong></p>`;
+                
+                // Distribute
+                solutionHtml += `<p>Distribute the slope:</p>`;
+                let distVal = q.m_correct * -q.x1;
+                let distSign = distVal >= 0 ? '+' : '-';
+                solutionHtml += `<p>y ${formatPointSlopeTerm(q.y1)} = ${q.m_correct}x ${distSign} ${Math.abs(distVal)}</p>`;
+                
+                // Solve for Y
+                solutionHtml += `<p>Isolate y:</p>`;
+                solutionHtml += `<p>y = ${q.m_correct}x ${distSign} ${Math.abs(distVal)} + ${q.y1}</p>`;
+                
+                let finalB = distVal + q.y1;
+                let finalBSign = finalB >= 0 ? '+' : '-';
+                solutionHtml += `<p><strong class="math-display text-blue-700">y = ${q.m_correct}x ${finalBSign} ${Math.abs(finalB)}</strong></p>`;
+                solutionHtml += `</div>`;
+
+            } else { // Special Lines
+                // Normalize input
+                let val = specialInput.value.toLowerCase().replace(/\s/g, '');
+                let correctStr = `${q.targetType}=${q.targetVal}`;
+                
+                isCorrect = (val === correctStr);
                 specialInput.classList.toggle('correct-answer', isCorrect);
                 specialInput.classList.toggle('incorrect-answer', !isCorrect);
+
+                // Explanation
+                solutionHtml += `<p class="text-gray-600">1. Identify the given line: <strong class="math-display">${q.isGivenVertical ? 'x='+q.givenVal : 'y='+q.givenVal}</strong> is a <strong>${q.isGivenVertical ? 'Vertical' : 'Horizontal'}</strong> line.</p>`;
                 
-                solutionHtml += `<p class="text-gray-600">1. A vertical line has an <strong>undefined slope</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">2. Its equation is always in the form <strong class="math-display">x = c</strong>, where 'c' is the x-value of every point on the line.</p>`;
-                solutionHtml += `<p class="text-gray-600">3. From the graph, we can see the line passes through <strong class="math-display">x = ${q.correctX}</strong>.</p>`;
-
-            } else { // Horizontal
-                const userAnswer = specialInput.value.toLowerCase().replace(/\s/g, '');
-                const correctAnswerString = `y=${q.correctY}`;
-                isCorrect = (userAnswer === correctAnswerString);
-
-                specialInput.classList.toggle('correct-answer', isCorrect);
-                specialInput.classList.toggle('incorrect-answer', !isCorrect);
+                let logicText = "";
+                if (q.isParallel) {
+                    logicText = `Parallel to a ${q.isGivenVertical ? 'Vertical' : 'Horizontal'} line is another <strong>${q.isGivenVertical ? 'Vertical' : 'Horizontal'}</strong> line.`;
+                } else {
+                    logicText = `Perpendicular to a ${q.isGivenVertical ? 'Vertical' : 'Horizontal'} line is a <strong>${q.isGivenVertical ? 'Horizontal' : 'Vertical'}</strong> line.`;
+                }
                 
-                solutionHtml += `<p class="text-gray-600">1. A horizontal line has a <strong>slope of zero</strong>.</p>`;
-                solutionHtml += `<p class="text-gray-600">2. Its equation is always in the form <strong class="math-display">y = c</strong>, where 'c' is the y-value of every point on the line.</p>`;
-                solutionHtml += `<p class="text-gray-600">3. From the graph, we can see the line passes through <strong class="math-display">y = ${q.correctY}</strong>.</p>`;
-            }
+                solutionHtml += `<p class="text-gray-600">2. ${logicText}</p>`;
+                
+                if (q.targetType === 'x') {
+                     solutionHtml += `<p class="text-gray-600">3. Vertical lines are always <strong>x = ...</strong>. It must pass through the x-coordinate of (${q.x1}, ${q.y1}).</p>`;
+                } else {
+                    solutionHtml += `<p class="text-gray-600">3. Horizontal lines are always <strong>y = ...</strong>. It must pass through the y-coordinate of (${q.x1}, ${q.y1}).</p>`;
+                }
 
-            // Final Equation
-            if (q.skillType === 0 || q.skillType === 1) {
-                solutionHtml += `<p class="text-gray-600 text-center mt-2 font-bold">Final Equation: ${formatSlopeIntercept(q.correctM, q.correctB)}</p>`;
-            } else if (q.skillType === 2) {
-                solutionHtml += `<p class="text-gray-600 text-center mt-2 font-bold">Final Equation: <strong class="math-display text-green-700">x = ${q.correctX}</strong></p>`;
-            } else {
-                solutionHtml += `<p class="text-gray-600 text-center mt-2 font-bold">Final Equation: <strong class="math-display text-green-700">y = ${q.correctY}</strong></p>`;
+                solutionHtml += `<p class="text-gray-600 mt-2">Final Answer: <strong class="math-display text-blue-700">${correctStr}</strong></p>`;
             }
             solutionHtml += '</div>';
 
-            
-            // --- Prepend Feedback and manage buttons ---
+            // --- Feedback UI ---
             let feedbackHtml = '';
             if (isCorrect) {
-                feedbackHtml = `<p class="correct-text text-center mb-2">Correct! Great job.</p>`;
+                feedbackHtml = `<p class="correct-text text-center mb-2">Correct!</p>`;
                 checkBtn.classList.add('hidden');
                 checkBtn.disabled = true;
-                // Disable all inputs
-                mInput.disabled = true; bInput.disabled = true; xInput.disabled = true; yInput.disabled = true;
-                specialInput.disabled = true; // Disable new input
-
+                [mInput, bInput, specialInput].forEach(el => el.disabled = true);
+                
                 if (!hasLostLifeThisQuestion) {
                     score++;
                     updateStatsDisplay();
                 }
-
             } else {
-                feedbackHtml = `<p class="incorrect-text text-center mb-2">Not quite. Review the solution below.</p>`;
+                feedbackHtml = `<p class="incorrect-text text-center mb-2">Not quite. See solution below.</p>`;
                 checkBtn.classList.remove('hidden');
                 checkBtn.disabled = false;
 
@@ -573,15 +489,16 @@
             if (lives <= 0) {
                 isGameOver = true;
                 feedbackArea.innerHTML = `
-                    <p class="incorrect-text text-center text-xl font-bold mb-2">Game Over!</p>
-                    <p class="text-gray-700 text-center text-lg">Your final score is: ${score}</p>
+                    <div class="text-center">
+                        <p class="incorrect-text text-xl font-bold mb-2">Game Over!</p>
+                        <p class="text-gray-700 text-lg">Your final score is: ${score}</p>
+                    </div>
                 `;
                 checkBtn.classList.add('hidden');
                 checkBtn.disabled = true;
                 nextBtn.textContent = 'Restart Game';
                 nextBtn.classList.remove('hidden');
-                mInput.disabled = true; bInput.disabled = true; xInput.disabled = true; yInput.disabled = true;
-                specialInput.disabled = true; // Disable on game over
+                [mInput, bInput, specialInput].forEach(el => el.disabled = true);
             }
         }
 
@@ -591,7 +508,7 @@
             isGameOver = false;
             updateStatsDisplay();
             nextBtn.textContent = 'Next Question';
-            currentSkill = -1; // Reset to start at skill 0 on next generate
+            currentSkill = -1; 
             generateQuestion();
         }
 
@@ -606,8 +523,7 @@
             }
         });
         
-        // Allow pressing Enter to check answer
-        [mInput, bInput, xInput, yInput, specialInput].forEach(input => { // Add new input to listener
+        [mInput, bInput, specialInput].forEach(input => {
             input.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     if (!checkBtn.disabled) {
@@ -625,6 +541,3 @@
     </script>
 </body>
 </html>
-
-
-
