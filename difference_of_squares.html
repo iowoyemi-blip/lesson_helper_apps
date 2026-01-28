@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binomial Breaker</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=JetBrains+Mono:wght@500&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pop {
+            animation: pop 0.3s ease-out;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MATH UTILITIES ---
+
+        // Evaluates a math string like "2(x-3)(x+3)" or "x^2 - 9"
+        const evaluateExpr = (exprStr, xVal) => {
+            if (!exprStr) return NaN;
+            // Clean up
+            let clean = exprStr.replace(/\s/g, '')
+                               .replace(/\^/g, '**'); // JS power operator
+            
+            // Implicit multiplication:
+            // digit( -> digit*(
+            // )( -> )*(
+            // )digit -> )*digit
+            // digit x -> digit*x
+            clean = clean.replace(/(\d)\(/g, '$1*(')
+                         .replace(/\)\(/g, ')*(')
+                         .replace(/\)(\d)/g, ')*$1')
+                         .replace(/(\d)([a-z])/g, '$1*$2')  // 2x -> 2*x
+                         .replace(/\)([a-z])/g, ')*$1');    // )x -> )*x
+
+            // Replace variable x
+            // We use regex to ensure we don't replace inside other words (though here only x is used)
+            clean = clean.replace(/x/g, `(${xVal})`);
+
+            try {
+                return new Function(`return ${clean}`)();
+            } catch (e) {
+                return NaN;
+            }
+        };
+
+        // Checks if user input is equivalent to target expression
+        const checkEquivalence = (userStr, targetStr) => {
+            // Test at multiple points to avoid coincidences
+            const testPoints = [-5, 0, 1, 3.5, 10];
+            
+            // First check: does it evaluate?
+            if (isNaN(evaluateExpr(userStr, 1))) return false;
+
+            for (let x of testPoints) {
+                const u = evaluateExpr(userStr, x);
+                const t = evaluateExpr(targetStr, x);
+                if (Math.abs(u - t) > 0.001) return false;
+            }
+            return true;
+        };
+
+        // Checks if string is a simple term like "4x" or "5" or "x"
+        // Used for Root Checking phase
+        const checkRoot = (userStr, correctRoot) => {
+            const cleanUser = userStr.replace(/\s/g, '');
+            const cleanCorrect = correctRoot.replace(/\s/g, '');
+            return cleanUser === cleanCorrect;
+        };
+
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ timeLeft, totalTime }) => {
+            const width = (timeLeft / totalTime) * 100;
+            let colorClass = 'bg-pink-500';
+            if (width < 30) colorClass = 'bg-yellow-500';
+            if (width < 10) colorClass = 'bg-red-500';
+
+            return (
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
+                    <div 
+                        className={`h-full transition-all duration-1000 ease-linear ${colorClass}`} 
+                        style={{ width: `${width}%` }}
+                    ></div>
+                </div>
+            );
+        };
+
+        const Feedback = ({ status, message }) => {
+            if (status === 'idle') return <div className="h-12"></div>;
+
+            const styles = {
+                success: "bg-green-100 text-green-800 border-green-200",
+                error: "bg-red-100 text-red-800 border-red-200",
+                info: "bg-blue-100 text-blue-800 border-blue-200"
+            };
+
+            const icon = {
+                success: "fa-check-circle",
+                error: "fa-times-circle",
+                info: "fa-info-circle"
+            };
+
+            return (
+                <div className={`h-12 flex items-center justify-center gap-2 rounded-lg border px-4 font-semibold transition-all duration-300 ${styles[status] || styles.info} ${status === 'success' ? 'pop' : 'shake'}`}>
+                    <i className={`fas ${icon[status]}`}></i>
+                    {message}
+                </div>
+            );
+        };
+
+        const App = () => {
+            // Game State
+            const [gameState, setGameState] = useState('start'); 
+            const [difficulty, setDifficulty] = useState('basic'); // 'basic' (Perfect Squares), 'hard' (GCF)
+            const [duration, setDuration] = useState(10); // minutes
+            const [timeLeft, setTimeLeft] = useState(600);
+            
+            const [score, setScore] = useState(0);
+            const [streak, setStreak] = useState(0);
+            
+            // Problem State
+            const [problem, setProblem] = useState(null);
+            // problem object: { 
+            //   fullStr: "16x^2 - 81", 
+            //   gcf: 1, 
+            //   remainderStr: "16x^2 - 81", 
+            //   rootA: "4x", 
+            //   rootB: "9", 
+            //   finalStr: "(4x-9)(4x+9)" 
+            // }
+
+            // Step Tracking
+            // Steps: 
+            // 0: GCF (Hard Mode Only)
+            // 1: Roots (Identify a and b)
+            // 2: Final Factors
+            const [currentStep, setCurrentStep] = useState(0);
+            
+            // Inputs
+            const [inputGCF, setInputGCF] = useState('');
+            const [inputRemainder, setInputRemainder] = useState('');
+            const [inputRootA, setInputRootA] = useState('');
+            const [inputRootB, setInputRootB] = useState('');
+            const [inputFinal, setInputFinal] = useState('');
+            
+            const [feedback, setFeedback] = useState({ status: 'idle', message: '' });
+            const timerRef = useRef(null);
+
+            // --- LOGIC ---
+
+            const generateProblem = () => {
+                // Generates a^2 - b^2 format
+                // 1. Generate coefficients for Roots (A and B)
+                // Root A is usually "cx"
+                const c = Math.floor(Math.random() * 9) + 1; // 1 to 9
+                const rootA = c === 1 ? 'x' : `${c}x`;
+                
+                // Root B is an integer
+                const rootBVal = Math.floor(Math.random() * 10) + 1; // 1 to 10
+                const rootB = `${rootBVal}`;
+
+                // Values squared
+                const term1Coeff = c * c;
+                const term2Val = rootBVal * rootBVal;
+                
+                let problemObj = {
+                    rootA: rootA,
+                    rootB: rootB,
+                    term1Str: term1Coeff === 1 ? 'x^2' : `${term1Coeff}x^2`,
+                    term2Str: `${term2Val}`,
+                    gcf: 1,
+                    isHard: difficulty === 'hard'
+                };
+
+                // Add GCF if Hard Mode
+                if (difficulty === 'hard') {
+                    const k = Math.floor(Math.random() * 4) + 2; // 2 to 5
+                    problemObj.gcf = k;
+                    problemObj.fullStr = `${k*term1Coeff}x^2 - ${k*term2Val}`;
+                    problemObj.remainderStr = `${problemObj.term1Str} - ${problemObj.term2Str}`;
+                    problemObj.finalStr = `${k}(${c===1?'':c}x - ${rootBVal})(${c===1?'':c}x + ${rootBVal})`;
+                } else {
+                    problemObj.fullStr = `${problemObj.term1Str} - ${problemObj.term2Str}`;
+                    problemObj.remainderStr = problemObj.fullStr; // No extraction needed
+                    problemObj.finalStr = `(${c===1?'':c}x - ${rootBVal})(${c===1?'':c}x + ${rootBVal})`;
+                }
+
+                setProblem(problemObj);
+                
+                // Set initial step
+                if (difficulty === 'hard') {
+                    setCurrentStep(0);
+                } else {
+                    setCurrentStep(1);
+                }
+
+                // Reset inputs
+                setInputGCF('');
+                setInputRemainder('');
+                setInputRootA('');
+                setInputRootB('');
+                setInputFinal('');
+                setFeedback({ status: 'idle', message: '' });
+            };
+
+            const startGame = () => {
+                setScore(0);
+                setStreak(0);
+                setTimeLeft(duration * 60);
+                setGameState('playing');
+                generateProblem();
+            };
+
+            useEffect(() => {
+                if (gameState === 'playing') {
+                    timerRef.current = setInterval(() => {
+                        setTimeLeft(t => {
+                            if (t <= 1) {
+                                setGameState('finished');
+                                return 0;
+                            }
+                            return t - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(timerRef.current);
+            }, [gameState]);
+
+
+            // --- HANDLERS ---
+
+            const handleCheckGCF = (e) => {
+                e.preventDefault();
+                const userK = parseInt(inputGCF);
+                
+                if (userK !== problem.gcf) {
+                    setFeedback({ status: 'error', message: "Incorrect GCF. Look for the largest number that divides both terms." });
+                    setStreak(0);
+                    return;
+                }
+
+                if (!checkEquivalence(inputRemainder, problem.remainderStr)) {
+                     setFeedback({ status: 'error', message: "GCF is right, but check the remaining part inside the parentheses." });
+                     setStreak(0);
+                     return;
+                }
+
+                setFeedback({ status: 'success', message: "Good extraction! Now analyze the remaining binomial." });
+                setCurrentStep(1);
+            };
+
+            const handleCheckRoots = (e) => {
+                e.preventDefault();
+                // Check A
+                const userA = inputRootA.replace(/\s/g, '');
+                const userB = inputRootB.replace(/\s/g, '');
+                
+                const targetA = problem.rootA;
+                const targetB = problem.rootB;
+
+                if (userA === targetA && userB === targetB) {
+                    setFeedback({ status: 'success', message: "Roots identified! Now build the final factors." });
+                    setCurrentStep(2);
+                    setTimeout(() => document.getElementById('final-input')?.focus(), 100);
+                } else {
+                    // Specific feedback
+                    if (userA !== targetA) {
+                         setFeedback({ status: 'error', message: `Check the first term. What times itself equals ${problem.term1Str}?` });
+                    } else {
+                         setFeedback({ status: 'error', message: `Check the second term. What is the square root of ${problem.term2Str}?` });
+                    }
+                    setStreak(0);
+                }
+            };
+
+            const handleCheckFinal = (e) => {
+                e.preventDefault();
+                // We need to check if user input is equivalent to finalStr
+                if (checkEquivalence(inputFinal, problem.finalStr)) {
+                    // Bonus points calculation
+                    const basePoints = difficulty === 'hard' ? 20 : 10;
+                    const streakBonus = streak * (difficulty === 'hard' ? 5 : 2);
+                    setScore(s => s + basePoints + streakBonus);
+                    setStreak(s => s + 1);
+                    setFeedback({ status: 'success', message: "Factored Completely!" });
+                    
+                    setTimeout(() => {
+                        generateProblem();
+                    }, 1500);
+                } else {
+                    // Check if they forgot GCF in final answer
+                    if (difficulty === 'hard') {
+                        // Check if equivalent to remainder only
+                         const justBinomials = inputFinal.replace(problem.gcf, ''); // naive check
+                         // better: eval
+                         const remainderOnly = `(${problem.rootA}-${problem.rootB})(${problem.rootA}+${problem.rootB})`;
+                         if (checkEquivalence(inputFinal, remainderOnly)) {
+                             setFeedback({ status: 'error', message: "Don't forget to include the GCF in front!" });
+                             return;
+                         }
+                    }
+                    setFeedback({ status: 'error', message: "Not quite. Check your signs and terms." });
+                    setStreak(0);
+                }
+            };
+
+            // --- RENDERERS ---
+
+            if (gameState === 'start') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-pink-500">
+                            <div className="text-6xl mb-4">🔨</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Binomial Breaker</h1>
+                            <p className="text-slate-500 mb-6">Master the Difference of Squares.</p>
+                            
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Duration</label>
+                                    <div className="flex justify-center gap-2">
+                                        {[5, 10, 15].map(m => (
+                                            <button 
+                                                key={m}
+                                                onClick={() => setDuration(m)}
+                                                className={`px-4 py-2 rounded-lg font-bold transition-all ${duration === m ? 'bg-pink-100 text-pink-700 border-2 border-pink-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}
+                                            >
+                                                {m}m
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mode</label>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setDifficulty('basic')}
+                                            className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'basic' ? 'bg-blue-100 text-blue-700 border-2 border-blue-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}
+                                        >
+                                            Standard
+                                            <div className="text-[10px] opacity-70 font-normal">Difference of Squares</div>
+                                        </button>
+                                        <button 
+                                            onClick={() => setDifficulty('hard')}
+                                            className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'hard' ? 'bg-purple-100 text-purple-700 border-2 border-purple-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}
+                                        >
+                                            Advanced
+                                            <div className="text-[10px] opacity-70 font-normal">Hidden by GCF</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onClick={startGame} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-transform active:scale-95">
+                                Start Breaking
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'finished') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-pink-500">
+                            <div className="text-6xl mb-4">💎</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Session Complete!</h1>
+                            <div className="py-8">
+                                <p className="text-gray-500 uppercase text-xs font-bold tracking-wider">Total Score</p>
+                                <p className="text-6xl font-black text-pink-600">{score}</p>
+                            </div>
+                            <button onClick={() => setGameState('start')} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl transition-colors">
+                                Play Again
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen max-w-2xl mx-auto p-4 flex flex-col">
+                    {/* Header Stats */}
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-6">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Time</span>
+                            <span className={`text-2xl font-black math-font ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>
+                                {Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <div className="text-center">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Streak</span>
+                                <span className={`text-2xl font-black ${streak > 0 ? 'text-orange-500' : 'text-slate-300'}`}>
+                                    <i className="fas fa-fire mr-1 text-sm"></i>{streak}
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Score</span>
+                                <span className="text-2xl font-black text-pink-600">{score}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ProgressBar timeLeft={timeLeft} totalTime={duration * 60} />
+
+                    {/* Main Game Area */}
+                    <div className="flex-1 mt-6 flex flex-col justify-start">
+                        {problem && (
+                            <div className="bg-white rounded-2xl shadow-lg border-b-4 border-slate-200 overflow-hidden">
+                                {/* Problem Card */}
+                                <div className="bg-slate-800 p-10 text-center relative overflow-hidden transition-all duration-500">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl rotate-12 text-white">
+                                        <i className="fas fa-cubes"></i>
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Factor Completely</div>
+                                        <div className="text-4xl md:text-5xl font-bold text-white math-font tracking-wider">
+                                            {problem.fullStr}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 space-y-8">
+                                    
+                                    {/* STEP 0: GCF (Hard Only) */}
+                                    {difficulty === 'hard' && (
+                                        <div className={`transition-all duration-500 ${currentStep > 0 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                                            <div className="flex items-center mb-2">
+                                                <div className="bg-purple-100 text-purple-700 w-6 h-6 rounded flex items-center justify-center text-xs font-bold mr-2">1</div>
+                                                <span className="font-bold text-slate-600 text-sm uppercase">Extract GCF</span>
+                                            </div>
+                                            <form onSubmit={handleCheckGCF} className="flex items-center gap-2">
+                                                <input 
+                                                    type="number" 
+                                                    className="w-20 bg-slate-50 border-2 border-slate-200 focus:border-purple-500 focus:bg-white rounded-lg px-3 py-3 text-xl font-bold math-font text-center outline-none"
+                                                    placeholder="?"
+                                                    value={inputGCF}
+                                                    onChange={e => setInputGCF(e.target.value)}
+                                                    readOnly={currentStep > 0}
+                                                />
+                                                <span className="text-2xl font-bold text-slate-400">(</span>
+                                                <input 
+                                                    type="text" 
+                                                    className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-purple-500 focus:bg-white rounded-lg px-3 py-3 text-xl font-bold math-font outline-none"
+                                                    placeholder="Remaining binomial..."
+                                                    value={inputRemainder}
+                                                    onChange={e => setInputRemainder(e.target.value)}
+                                                    readOnly={currentStep > 0}
+                                                />
+                                                <span className="text-2xl font-bold text-slate-400">)</span>
+                                                {currentStep === 0 && (
+                                                    <button className="bg-purple-600 hover:bg-purple-700 text-white w-12 h-12 rounded-lg flex items-center justify-center shadow-md active:scale-95 transition-transform">
+                                                        <i className="fas fa-check"></i>
+                                                    </button>
+                                                )}
+                                            </form>
+                                        </div>
+                                    )}
+
+                                    {/* STEP 1: Identify Roots */}
+                                    {(currentStep >= 1) && (
+                                        <div className="fade-in border-t-2 border-slate-100 pt-6">
+                                            <div className={`transition-all duration-500 ${currentStep > 1 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                                                <div className="flex items-center mb-4">
+                                                    <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded flex items-center justify-center text-xs font-bold mr-2">{difficulty === 'hard' ? '2' : '1'}</div>
+                                                    <span className="font-bold text-slate-600 text-sm uppercase">Identify the Roots ($a$ and $b$)</span>
+                                                </div>
+                                                
+                                                <div className="flex flex-col md:flex-row gap-4 items-center justify-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                                    {/* Visual Aid */}
+                                                    <div className="text-xl font-bold text-slate-400 math-font">
+                                                        (<span className="text-blue-600">a</span>)^2 - (<span className="text-pink-500">b</span>)^2
+                                                    </div>
+                                                    <i className="fas fa-arrow-right text-slate-300 hidden md:block"></i>
+                                                    
+                                                    <form onSubmit={handleCheckRoots} className="flex gap-4 items-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-xs font-bold text-blue-400 mb-1">Root a</span>
+                                                            <input 
+                                                                type="text" 
+                                                                className="w-24 bg-white border-2 border-slate-200 focus:border-blue-500 rounded-lg px-2 py-2 text-lg font-bold math-font text-center outline-none"
+                                                                placeholder="e.g. 3x"
+                                                                value={inputRootA}
+                                                                onChange={e => setInputRootA(e.target.value)}
+                                                                readOnly={currentStep > 1}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-xs font-bold text-pink-400 mb-1">Root b</span>
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-24 bg-white border-2 border-slate-200 focus:border-pink-500 rounded-lg px-2 py-2 text-lg font-bold math-font text-center outline-none"
+                                                                placeholder="e.g. 5"
+                                                                value={inputRootB}
+                                                                onChange={e => setInputRootB(e.target.value)}
+                                                                readOnly={currentStep > 1}
+                                                            />
+                                                        </div>
+                                                        {currentStep === 1 && (
+                                                            <button className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow-md active:scale-95 transition-transform">
+                                                                Check
+                                                            </button>
+                                                        )}
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* STEP 2: Final Factorization */}
+                                    {currentStep >= 2 && (
+                                        <div className="fade-in border-t-2 border-slate-100 pt-6">
+                                            <div className="flex items-center mb-2">
+                                                <div className="bg-pink-100 text-pink-700 w-6 h-6 rounded flex items-center justify-center text-xs font-bold mr-2">{difficulty === 'hard' ? '3' : '2'}</div>
+                                                <span className="font-bold text-slate-600 text-sm uppercase">Write Final Factors</span>
+                                            </div>
+                                            <form onSubmit={handleCheckFinal} className="flex gap-2">
+                                                <input 
+                                                    id="final-input"
+                                                    type="text" 
+                                                    className="flex-1 bg-pink-50 border-2 border-slate-200 focus:border-pink-500 focus:bg-white rounded-xl px-4 py-3 text-xl font-bold math-font outline-none transition-colors"
+                                                    placeholder={difficulty === 'hard' ? `e.g. ${problem.gcf}(...)(...)` : "e.g. (3x-5)(3x+5)"}
+                                                    value={inputFinal}
+                                                    onChange={e => setInputFinal(e.target.value)}
+                                                />
+                                                <button className="bg-pink-600 hover:bg-pink-700 text-white px-6 rounded-xl font-bold shadow-lg shadow-pink-200 transition-transform active:scale-95">
+                                                    Submit
+                                                </button>
+                                            </form>
+                                        </div>
+                                    )}
+
+                                    <Feedback status={feedback.status} message={feedback.message} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The GCF Grabber</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=JetBrains+Mono:wght@500&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pop {
+            animation: pop 0.3s ease-out;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Fix for superscript alignment in large text */
+        sup {
+            font-size: 0.6em;
+            vertical-align: super;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MATH UTILITIES ---
+
+        // Basic Math Helper to find GCF of two numbers
+        const getGCD = (a, b) => {
+            a = Math.abs(a);
+            b = Math.abs(b);
+            if (b > a) {var temp = a; a = b; b = temp;}
+            while (true) {
+                if (b == 0) return a;
+                a %= b;
+                if (a == 0) return b;
+                b %= a;
+            }
+        };
+
+        const evaluateExpr = (exprStr, xVal) => {
+            if (!exprStr) return NaN;
+            // Normalize
+            let clean = exprStr.replace(/\s/g, '')
+                               .replace(/\^/g, '**'); 
+            
+            // Implicit Multiplication Logic
+            clean = clean.replace(/(\d)\(/g, '$1*(')
+                         .replace(/\)\(/g, ')*(')
+                         .replace(/\)(\d)/g, ')*$1')
+                         .replace(/(\d)([a-z])/g, '$1*$2') 
+                         .replace(/\)([a-z])/g, ')*$1')
+                         .replace(/([a-z])\(/g, '$1*('); // x( -> x*(
+
+            // Variable Replacement
+            clean = clean.replace(/x/g, `(${xVal})`);
+
+            try {
+                return new Function(`return ${clean}`)();
+            } catch (e) {
+                return NaN;
+            }
+        };
+
+        const checkEquivalence = (userStr, targetStr) => {
+            const testPoints = [-2, 0, 1, 5];
+            if (isNaN(evaluateExpr(userStr, 1))) return false;
+            for (let x of testPoints) {
+                const u = evaluateExpr(userStr, x);
+                const t = evaluateExpr(targetStr, x);
+                if (Math.abs(u - t) > 0.001) return false;
+            }
+            return true;
+        };
+
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ timeLeft, totalTime }) => {
+            const width = (timeLeft / totalTime) * 100;
+            let colorClass = 'bg-orange-500';
+            if (width < 30) colorClass = 'bg-yellow-500';
+            if (width < 10) colorClass = 'bg-red-500';
+
+            return (
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
+                    <div 
+                        className={`h-full transition-all duration-1000 ease-linear ${colorClass}`} 
+                        style={{ width: `${width}%` }}
+                    ></div>
+                </div>
+            );
+        };
+
+        const Feedback = ({ status, message }) => {
+            if (status === 'idle') return <div className="h-12"></div>;
+
+            const styles = {
+                success: "bg-green-100 text-green-800 border-green-200",
+                error: "bg-red-100 text-red-800 border-red-200",
+                info: "bg-blue-100 text-blue-800 border-blue-200",
+                warning: "bg-yellow-100 text-yellow-800 border-yellow-200"
+            };
+
+            const icon = {
+                success: "fa-check-circle",
+                error: "fa-times-circle",
+                info: "fa-info-circle",
+                warning: "fa-exclamation-circle"
+            };
+
+            return (
+                <div className={`h-12 flex items-center justify-center gap-2 rounded-lg border px-4 font-semibold transition-all duration-300 ${styles[status] || styles.info} ${status === 'success' ? 'pop' : 'shake'}`}>
+                    <i className={`fas ${icon[status]}`}></i>
+                    {message}
+                </div>
+            );
+        };
+        
+        // Helper to format math string (replace ^2 with superscript)
+        const formatMath = (str) => {
+            if (!str) return null;
+            // Split by caret followed by digits
+            const parts = str.split(/(\^\d+)/g);
+            return parts.map((part, i) => {
+                if (part.startsWith('^')) {
+                    return <sup key={i}>{part.substring(1)}</sup>;
+                }
+                return <span key={i}>{part}</span>;
+            });
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = useState('start'); 
+            const [difficulty, setDifficulty] = useState('normal'); 
+            const [duration, setDuration] = useState(10); 
+            const [timeLeft, setTimeLeft] = useState(600);
+            const [score, setScore] = useState(0);
+            const [streak, setStreak] = useState(0);
+            
+            // Problem State
+            const [problem, setProblem] = useState(null);
+            // { expression: "6x^2 - 10x", correctGCF: "2x", remainder: "3x - 5" }
+
+            const [step, setStep] = useState(1); // 1: Grab GCF, 2: Find Leftovers
+            const [inputGCF, setInputGCF] = useState('');
+            const [inputRemainder, setInputRemainder] = useState('');
+            const [feedback, setFeedback] = useState({ status: 'idle', message: '' });
+
+            const timerRef = useRef(null);
+
+            // --- GENERATOR ---
+            const generateProblem = () => {
+                // We construct the problem by GCF * Remainder = Expression
+                
+                // 1. Determine GCF
+                let gcfNum, gcfVarPower;
+                
+                if (difficulty === 'normal') {
+                    // Normal: GCF is usually a number, sometimes number+x
+                    gcfNum = Math.floor(Math.random() * 5) + 2; // 2 to 6
+                    gcfVarPower = Math.random() > 0.6 ? 1 : 0; // 40% chance of 'x' in GCF
+                } else {
+                    // Hard: GCF can be larger, variable power can be higher (x or x^2)
+                    gcfNum = Math.floor(Math.random() * 8) + 3; // 3 to 10
+                    gcfVarPower = Math.random() > 0.5 ? 1 : 2; // x or x^2
+                }
+
+                // 2. Determine Remainder (Relatively Prime terms)
+                // We generate two terms (A and B) that don't share factors
+                let remCoeff1, remCoeff2, remPow1, remPow2;
+                
+                // Ensure coefficients are relatively prime
+                do {
+                    remCoeff1 = Math.floor(Math.random() * 7) + 1;
+                    remCoeff2 = Math.floor(Math.random() * 7) + 1;
+                } while (getGCD(remCoeff1, remCoeff2) !== 1);
+
+                // Determine powers for remainder
+                // Term 1 usually higher power than Term 2
+                if (difficulty === 'normal') {
+                    // e.g., 3x + 5 or 3x^2 - 5x (if we extracted x)
+                    // Let's keep remainder simple: linear or constant
+                    remPow1 = 1;
+                    remPow2 = 0;
+                    // Wait, if we extracted x, original was x^2 and x.
+                } else {
+                    remPow1 = 2; // Quadratic remainder
+                    remPow2 = Math.random() > 0.5 ? 1 : 0;
+                }
+                
+                // Signs
+                const sign = Math.random() > 0.5 ? '+' : '-';
+
+                // Construct strings
+                const gcfStr = `${gcfNum}${gcfVarPower === 0 ? '' : (gcfVarPower === 1 ? 'x' : 'x^2')}`;
+                
+                const remTerm1Str = `${remCoeff1 === 1 && remPow1 > 0 ? '' : remCoeff1}${remPow1 === 0 ? '' : (remPow1 === 1 ? 'x' : 'x^2')}`;
+                const remTerm2Str = `${remCoeff2 === 1 && remPow2 > 0 ? '' : remCoeff2}${remPow2 === 0 ? '' : (remPow2 === 1 ? 'x' : 'x^2')}`;
+                const remainderStr = `${remTerm1Str} ${sign} ${remTerm2Str}`;
+
+                // Calculate Full Expression for display
+                // (GCF * Term1) sign (GCF * Term2)
+                const fullCoeff1 = gcfNum * remCoeff1;
+                const fullPow1 = gcfVarPower + remPow1;
+                const fullTerm1 = `${fullCoeff1}${fullPow1 === 0 ? '' : (fullPow1 === 1 ? 'x' : `x^${fullPow1}`)}`;
+                
+                const fullCoeff2 = gcfNum * remCoeff2;
+                const fullPow2 = gcfVarPower + remPow2;
+                const fullTerm2 = `${fullCoeff2}${fullPow2 === 0 ? '' : (fullPow2 === 1 ? 'x' : `x^${fullPow2}`)}`;
+                
+                const expressionStr = `${fullTerm1} ${sign} ${fullTerm2}`;
+
+                setProblem({
+                    expression: expressionStr,
+                    correctGCF: gcfStr,
+                    correctRemainder: remainderStr
+                });
+                
+                setStep(1);
+                setInputGCF('');
+                setInputRemainder('');
+                setFeedback({ status: 'idle', message: '' });
+            };
+
+            const startGame = () => {
+                setScore(0);
+                setStreak(0);
+                setTimeLeft(duration * 60);
+                setGameState('playing');
+                generateProblem();
+            };
+
+            useEffect(() => {
+                if (gameState === 'playing') {
+                    timerRef.current = setInterval(() => {
+                        setTimeLeft(t => {
+                            if (t <= 1) {
+                                setGameState('finished');
+                                return 0;
+                            }
+                            return t - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(timerRef.current);
+            }, [gameState]);
+
+
+            // --- HANDLERS ---
+            
+            // Validate Stage 1: The GCF
+            const handleCheckGCF = (e) => {
+                e.preventDefault();
+                const user = inputGCF.replace(/\s/g, '');
+                const target = problem.correctGCF;
+
+                if (user === target) {
+                    setFeedback({ status: 'success', message: "That's the GCF! Now find what's left over." });
+                    setStep(2);
+                    setTimeout(() => document.getElementById('remainder-input')?.focus(), 100);
+                } else {
+                    // Smart Error Checking
+                    // 1. Did they get the number right but miss variable?
+                    // 2. Did they get a common factor but not Greatest?
+                    
+                    // Simple logic: Check equivalence. 
+                    // If checkEquivalence(user, target) is TRUE, they matched exact logic.
+                    // But we want exact string match for "Simplest Form" GCF usually.
+                    // Let's use evaluate to see if it's at least a factor.
+                    
+                    // Actually, for GCF, string matching is safest IF we standardize.
+                    // But "2x" and "2*x" are same.
+                    
+                    if (checkEquivalence(user, target)) {
+                        // Correct mathematical value
+                        setFeedback({ status: 'success', message: "Got it! Calculating leftovers..." });
+                        setStep(2);
+                        setTimeout(() => document.getElementById('remainder-input')?.focus(), 100);
+                        return;
+                    }
+
+                    // Check if it's a common factor
+                    // A simple heuristic: check if problem expression is divisible by user input
+                    // For now, simpler feedback:
+                    
+                    if (target.includes('x') && !user.includes('x')) {
+                        setFeedback({ status: 'warning', message: "Don't forget the variable! Both terms have an x." });
+                    } else {
+                         setFeedback({ status: 'error', message: "Not quite. Look for the largest number (and variable) that fits into both." });
+                    }
+                    setStreak(0);
+                }
+            };
+
+            // Validate Stage 2: The Remainder
+            const handleCheckRemainder = (e) => {
+                e.preventDefault();
+                
+                // We check if GCF * Remainder == Original Expression
+                const fullGuess = `${problem.correctGCF}(${inputRemainder})`;
+                
+                // Since GCF is already validated as correct, we just need to check if 
+                // correctGCF * userRemainder == Original Expression
+                // AND (Crucial) userRemainder shouldn't have common factors left.
+                // But since GCF was correct/maximized in Step 1, if the math works, the remainder is implicitly correct.
+                
+                if (checkEquivalence(fullGuess, problem.expression)) {
+                    const basePoints = difficulty === 'hard' ? 20 : 10;
+                    const bonus = streak * 2;
+                    setScore(s => s + basePoints + bonus);
+                    setStreak(s => s + 1);
+                    setFeedback({ status: 'success', message: "Perfectly Factored!" });
+                    setTimeout(generateProblem, 1500);
+                } else {
+                    setFeedback({ status: 'error', message: "Check your division. Distribute back to see if it matches." });
+                    setStreak(0);
+                }
+            };
+
+            // --- RENDER ---
+            
+            if (gameState === 'start') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-orange-500">
+                            <div className="text-6xl mb-4">🤏</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">GCF Grabber</h1>
+                            <p className="text-slate-500 mb-6">Find the GCF and pull it out.</p>
+                            
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Duration</label>
+                                    <div className="flex justify-center gap-2">
+                                        {[5, 10, 15].map(m => (
+                                            <button key={m} onClick={() => setDuration(m)} className={`px-4 py-2 rounded-lg font-bold transition-all ${duration === m ? 'bg-orange-100 text-orange-700 border-2 border-orange-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>{m}m</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mode</label>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setDifficulty('normal')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'normal' ? 'bg-blue-100 text-blue-700 border-2 border-blue-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                            Standard
+                                            <div className="text-[10px] opacity-70 font-normal">Integers & Simple X</div>
+                                        </button>
+                                        <button onClick={() => setDifficulty('hard')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'hard' ? 'bg-purple-100 text-purple-700 border-2 border-purple-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                            Variable Power
+                                            <div className="text-[10px] opacity-70 font-normal">Higher Powers (x², x³)</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={startGame} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-transform active:scale-95">Start Grabbing</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'finished') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-orange-500">
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Session Complete!</h1>
+                            <div className="py-8"><p className="text-gray-500 uppercase text-xs font-bold tracking-wider">Final Score</p><p className="text-6xl font-black text-orange-600">{score}</p></div>
+                            <button onClick={() => setGameState('start')} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition-colors">Play Again</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen max-w-2xl mx-auto p-4 flex flex-col">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-6">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Time</span>
+                            <span className={`text-2xl font-black math-font ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>{Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}</span>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Score</span>
+                            <span className="text-2xl font-black text-orange-600">{score}</span>
+                        </div>
+                    </div>
+                    <ProgressBar timeLeft={timeLeft} totalTime={duration * 60} />
+
+                    <div className="flex-1 mt-6 flex flex-col justify-start">
+                        {problem && (
+                            <div className="bg-white rounded-2xl shadow-lg border-b-4 border-slate-200 overflow-hidden">
+                                <div className="bg-slate-800 p-10 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl -rotate-12 text-white"><i className="fas fa-magnet"></i></div>
+                                    <div className="relative z-10">
+                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Factor Out GCF</div>
+                                        <div className="text-4xl md:text-5xl font-bold text-white math-font tracking-wider">
+                                            {formatMath(problem.expression)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 space-y-8">
+                                    {/* STEP 1: THE GRAB */}
+                                    <div className={`transition-all duration-300 ${step > 1 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                                        <div className="flex items-center mb-2">
+                                            <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded flex items-center justify-center text-xs font-bold mr-2">1</div>
+                                            <span className="font-bold text-slate-600 text-sm uppercase">What can you pull out? (GCF)</span>
+                                        </div>
+                                        <form onSubmit={handleCheckGCF} className="flex gap-2">
+                                            <input type="text" className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-xl font-bold math-font outline-none" placeholder="e.g. 2x" value={inputGCF} onChange={e => setInputGCF(e.target.value)} readOnly={step > 1} />
+                                            {step === 1 && <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-xl font-bold shadow-lg shadow-blue-200 transition-transform active:scale-95">Grab</button>}
+                                        </form>
+                                    </div>
+
+                                    {/* STEP 2: THE LEFTOVERS */}
+                                    {step >= 2 && (
+                                        <div className="fade-in border-t-2 border-slate-100 pt-6">
+                                            <div className="flex items-center mb-2">
+                                                <div className="bg-orange-100 text-orange-700 w-6 h-6 rounded flex items-center justify-center text-xs font-bold mr-2">2</div>
+                                                <span className="font-bold text-slate-600 text-sm uppercase">What is left inside?</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-2xl font-bold text-slate-700 math-font">
+                                                <span className="text-blue-600">{formatMath(problem.correctGCF)}</span>
+                                                <span>(</span>
+                                                <form onSubmit={handleCheckRemainder} className="flex-1 min-w-0">
+                                                    <input id="remainder-input" type="text" className="w-full bg-orange-50 border-2 border-slate-200 focus:border-orange-500 focus:bg-white rounded-xl px-4 py-2 text-xl font-bold math-font outline-none" placeholder="..." value={inputRemainder} onChange={e => setInputRemainder(e.target.value)} />
+                                                </form>
+                                                <span>)</span>
+                                            </div>
+                                            <button onClick={handleCheckRemainder} className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-orange-200 transition-transform active:scale-95">Check Factorization</button>
+                                        </div>
+                                    )}
+
+                                    <Feedback status={feedback.status} message={feedback.message} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

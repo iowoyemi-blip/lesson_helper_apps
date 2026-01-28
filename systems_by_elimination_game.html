@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elimination Arena</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=JetBrains+Mono:wght@500&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pop {
+            animation: pop 0.3s ease-out;
+        }
+
+        .equation-line {
+            position: relative;
+        }
+        .equation-line::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: #cbd5e1; /* slate-300 */
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MATH UTILITIES ---
+
+        const evaluateLinear = (exprStr, vars) => {
+            if (!exprStr) return NaN;
+            
+            // Standardize format
+            let clean = exprStr.replace(/\s/g, '')
+                               .replace(/\-\-/g, '+')
+                               .replace(/\+\-/g, '-')
+                               .replace(/\-\+/g, '-');
+            
+            // Implicit multiplication support for parentheses
+            clean = clean.replace(/([a-z])\(/g, '$1*(')
+                         .replace(/\)([a-z])/g, ')*$1')
+                         .replace(/(\d)\(/g, '$1*(')    
+                         .replace(/\)\(/g, ')*(')        
+                         .replace(/\)(\d)/g, ')*$1');    
+
+            // Variable replacement with implicit multiplication check
+            let parsed = clean;
+            Object.keys(vars).forEach(v => {
+                const regex = new RegExp(`(?<![a-z])${v}(?![a-z])`, 'g');
+                
+                parsed = parsed.replace(regex, (match, offset, string) => {
+                    // Check the character immediately before the variable
+                    // If it is a digit or closing parenthesis, we need to insert a *
+                    const prevChar = offset > 0 ? string[offset - 1] : '';
+                    const needsMult = /[\d\)]/.test(prevChar);
+                    
+                    return needsMult ? `*(${vars[v]})` : `(${vars[v]})`;
+                });
+            });
+
+            try {
+                return new Function(`return ${parsed}`)();
+            } catch (e) {
+                return NaN;
+            }
+        };
+
+        const checkEliminationStep = (userStr, system) => {
+            if (!userStr.includes('=')) return { valid: false, error: 'missing_equals' };
+            
+            const [lhsStr, rhsStr] = userStr.split('=');
+
+            // 1. Identify which variable SHOULD remain
+            // We check the system logic. 
+            // Normal: Add equations. Hard: Subtract equations.
+            // But we can be flexible: Check if user successfully eliminated ANY one variable.
+            
+            const hasX = userStr.toLowerCase().includes('x');
+            const hasY = userStr.toLowerCase().includes('y');
+
+            if (hasX && hasY) return { valid: false, error: 'failed_elimination' };
+            if (!hasX && !hasY) return { valid: false, error: 'no_vars' };
+
+            const remainingVar = hasX ? 'x' : 'y';
+            
+            // 2. Math Equivalence Check
+            // We test values for the remaining variable to see if the user's equation is consistent
+            // with the system's solution.
+            // Note: Since we eliminated one var, the resulting equation must be true for the solution value.
+            
+            const testVal = system.solution[remainingVar];
+            const vars = { [remainingVar]: testVal };
+            
+            const valLHS = evaluateLinear(lhsStr, vars);
+            const valRHS = evaluateLinear(rhsStr, vars);
+
+            if (isNaN(valLHS) || isNaN(valRHS)) return { valid: false, error: 'parse_error' };
+
+            // Allow small float error
+            if (Math.abs(valLHS - valRHS) < 0.001) {
+                return { valid: true, remainingVar };
+            } else {
+                return { valid: false, error: 'math_mismatch' };
+            }
+        };
+
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ timeLeft, totalTime }) => {
+            const width = (timeLeft / totalTime) * 100;
+            let colorClass = 'bg-emerald-500';
+            if (width < 30) colorClass = 'bg-yellow-500';
+            if (width < 10) colorClass = 'bg-red-500';
+
+            return (
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
+                    <div 
+                        className={`h-full transition-all duration-1000 ease-linear ${colorClass}`} 
+                        style={{ width: `${width}%` }}
+                    ></div>
+                </div>
+            );
+        };
+
+        const GameStats = ({ streak, score, timeLeft, difficulty }) => {
+            const formatTime = (seconds) => {
+                const m = Math.floor(seconds / 60);
+                const s = seconds % 60;
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+
+            return (
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Time</span>
+                            <span className={`text-2xl font-black math-font ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>
+                                {formatTime(timeLeft)}
+                            </span>
+                        </div>
+                        {difficulty === 'hard' && (
+                            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200 uppercase tracking-wider">
+                                🔥 Subtraction
+                            </div>
+                        )}
+                        {difficulty === 'normal' && (
+                            <div className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200 uppercase tracking-wider">
+                                Add
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-6 w-full md:w-auto justify-around md:justify-end">
+                        <div className="flex flex-col items-center">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Streak</span>
+                            <div className="flex items-center gap-1">
+                                <i className={`fas fa-fire ${streak > 0 ? 'text-orange-500 animate-bounce' : 'text-gray-300'}`}></i>
+                                <span className="text-2xl font-black text-slate-700">{streak}</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Score</span>
+                            <span className="text-2xl font-black text-emerald-600">{score}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Feedback = ({ status, message }) => {
+            if (status === 'idle') return <div className="h-12"></div>;
+
+            const styles = {
+                success: "bg-green-100 text-green-800 border-green-200",
+                error: "bg-red-100 text-red-800 border-red-200",
+                info: "bg-blue-100 text-blue-800 border-blue-200",
+                warning: "bg-yellow-100 text-yellow-800 border-yellow-200"
+            };
+
+            const icon = {
+                success: "fa-check-circle",
+                error: "fa-times-circle",
+                info: "fa-info-circle",
+                warning: "fa-exclamation-triangle"
+            };
+
+            return (
+                <div className={`h-12 flex items-center justify-center gap-2 rounded-lg border px-4 font-semibold transition-all duration-300 ${styles[status] || styles.info} ${status === 'success' ? 'pop' : 'shake'}`}>
+                    <i className={`fas ${icon[status]}`}></i>
+                    {message}
+                </div>
+            );
+        };
+
+        const App = () => {
+            // State
+            const [gameState, setGameState] = useState('start'); 
+            const [selectedMinutes, setSelectedMinutes] = useState(15);
+            const [difficulty, setDifficulty] = useState('normal'); 
+            const [timeLeft, setTimeLeft] = useState(15 * 60);
+            const [streak, setStreak] = useState(0);
+            const [score, setScore] = useState(0);
+            
+            // Problem State
+            const [system, setSystem] = useState(null); 
+            const [step, setStep] = useState(1);
+            const [inputStep1, setInputStep1] = useState('');
+            const [inputX, setInputX] = useState('');
+            const [inputY, setInputY] = useState('');
+            const [feedback, setFeedback] = useState({ status: 'idle', message: '' });
+            
+            // Track which variable was found first to prompt for the second
+            const [firstVarFound, setFirstVarFound] = useState(null); // 'x' or 'y'
+
+            const timerRef = useRef(null);
+
+            // --- GENERATOR LOGIC ---
+            const generateProblem = () => {
+                // 1. Solution
+                const limit = difficulty === 'hard' ? 10 : 6;
+                const x = Math.floor(Math.random() * (limit * 2 + 1)) - limit;
+                const y = Math.floor(Math.random() * (limit * 2 + 1)) - limit;
+
+                // 2. Equation 1 coefficients
+                // Avoid 0 to keep it standard elimination
+                let A = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                let B = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                const C = A * x + B * y;
+
+                // 3. Equation 2 coefficients based on difficulty
+                let D, E, F;
+
+                if (difficulty === 'normal') {
+                    // One variable must be opposite (Additive Inverse)
+                    if (Math.random() > 0.5) {
+                        // Eliminate X: D = -A, E is random (but not -B to avoid 0=0)
+                        D = -A;
+                        do {
+                            E = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                        } while (E === -B);
+                    } else {
+                        // Eliminate Y: E = -B, D is random
+                        E = -B;
+                        do {
+                            D = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                        } while (D === -A);
+                    }
+                } else {
+                    // Hard Mode: Subtraction required (Same coefficients)
+                    if (Math.random() > 0.5) {
+                        // Eliminate X: D = A
+                        D = A;
+                        do {
+                            E = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                        } while (E === B);
+                    } else {
+                        // Eliminate Y: E = B
+                        E = B;
+                        do {
+                            D = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                        } while (D === A);
+                    }
+                }
+
+                F = D * x + E * y;
+
+                setSystem({
+                    solution: { x, y },
+                    eq1: { A, B, C },
+                    eq2: { D, E, F }
+                });
+
+                setStep(1);
+                setInputStep1('');
+                setInputX('');
+                setInputY('');
+                setFirstVarFound(null);
+                setFeedback({ status: 'idle', message: '' });
+            };
+
+            // --- GAME LOOP ---
+            useEffect(() => {
+                if (gameState === 'playing') {
+                    timerRef.current = setInterval(() => {
+                        setTimeLeft(prev => {
+                            if (prev <= 1) {
+                                endGame();
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                } else {
+                    clearInterval(timerRef.current);
+                }
+                return () => clearInterval(timerRef.current);
+            }, [gameState]);
+
+            const startGame = () => {
+                setScore(0);
+                setStreak(0);
+                setTimeLeft(selectedMinutes * 60);
+                setGameState('playing');
+                generateProblem();
+            };
+
+            const endGame = () => {
+                setGameState('finished');
+                clearInterval(timerRef.current);
+            };
+
+            // --- INPUT HANDLERS ---
+            
+            const handleCheckStep1 = (e) => {
+                e.preventDefault();
+                const result = checkEliminationStep(inputStep1, system);
+
+                if (result.valid) {
+                    const foundVar = result.remainingVar;
+                    setFirstVarFound(foundVar);
+                    setFeedback({ status: 'success', message: `Nice elimination! Now solve for ${foundVar}.` });
+                    setStep(2);
+                    setTimeout(() => {
+                        document.getElementById(`input-${foundVar}`)?.focus();
+                    }, 100);
+                } else {
+                    let msg = "Check your math.";
+                    let status = "error";
+                    switch(result.error) {
+                        case 'missing_equals': msg = "Don't forget the equals sign!"; status = "warning"; break;
+                        case 'failed_elimination': msg = "You still have both variables! Add or Subtract to kill one."; break;
+                        case 'no_vars': msg = "You eliminated everything! Keep one variable."; break;
+                        case 'math_mismatch': 
+                            msg = difficulty === 'normal' 
+                                ? "Incorrect sum. Try adding the equations vertically." 
+                                : "Incorrect result. Are you subtracting correctly?"; 
+                            break;
+                    }
+                    setFeedback({ status, message: msg });
+                    if (status === 'error') setStreak(0); 
+                }
+            };
+
+            const handleCheckStep2 = (e) => {
+                e.preventDefault();
+                // User is solving for 'firstVarFound'
+                const targetVal = system.solution[firstVarFound];
+                const inputVal = parseFloat(firstVarFound === 'x' ? inputX : inputY);
+
+                if (inputVal === targetVal) {
+                    const secondVar = firstVarFound === 'x' ? 'y' : 'x';
+                    setFeedback({ status: 'success', message: `Correct! ${firstVarFound} = ${targetVal}. Now find ${secondVar}.` });
+                    setStep(3);
+                    setTimeout(() => {
+                        document.getElementById(`input-${secondVar}`)?.focus();
+                    }, 100);
+                } else {
+                    setFeedback({ status: 'error', message: `Check your algebra for ${firstVarFound}.` });
+                    setStreak(0);
+                }
+            };
+
+            const handleCheckStep3 = (e) => {
+                e.preventDefault();
+                const secondVar = firstVarFound === 'x' ? 'y' : 'x';
+                const targetVal = system.solution[secondVar];
+                const inputVal = parseFloat(secondVar === 'x' ? inputX : inputY);
+
+                if (inputVal === targetVal) {
+                    const basePoints = difficulty === 'hard' ? 25 : 15;
+                    const streakBonus = streak * (difficulty === 'hard' ? 5 : 3);
+                    
+                    setScore(prev => prev + basePoints + streakBonus);
+                    setStreak(prev => prev + 1);
+                    setFeedback({ status: 'success', message: 'System Solved!' });
+                    setTimeout(() => {
+                        generateProblem();
+                    }, 1500);
+                } else {
+                    setFeedback({ status: 'error', message: `Check your calculation for ${secondVar}.` });
+                    setStreak(0);
+                }
+            };
+
+            // --- RENDER HELPERS ---
+            const renderEq = (A, B, C) => {
+                const termA = A === 1 ? 'x' : A === -1 ? '-x' : A === 0 ? '' : `${A}x`;
+                const termB = B === 0 ? '' : (B > 0 ? (termA ? `+ ${B === 1 ? '' : B}y` : `${B === 1 ? '' : B}y`) : `- ${Math.abs(B) === 1 ? '' : Math.abs(B)}y`);
+                return `${termA} ${termB} = ${C}`;
+            };
+
+            // Main Render
+            if (gameState === 'start') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-emerald-600">
+                            <div className="text-6xl mb-4">⚔️</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Elimination Arena</h1>
+                            <p className="text-slate-500 mb-6">Eliminate a variable, then solve the system.</p>
+                            
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Duration</label>
+                                <div className="flex justify-center gap-2">
+                                    {[5, 10, 15, 20].map(m => (
+                                        <button 
+                                            key={m}
+                                            onClick={() => setSelectedMinutes(m)}
+                                            className={`px-3 py-2 text-sm rounded-lg font-bold transition-all ${
+                                                selectedMinutes === m 
+                                                ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-500' 
+                                                : 'bg-slate-50 text-slate-500 border-2 border-slate-200 hover:border-emerald-300'
+                                            }`}
+                                        >
+                                            {m}m
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Difficulty</label>
+                                <div className="flex justify-center gap-2">
+                                    <button 
+                                        onClick={() => setDifficulty('normal')}
+                                        className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${
+                                            difficulty === 'normal' 
+                                            ? 'bg-blue-100 text-blue-700 border-2 border-blue-500' 
+                                            : 'bg-slate-50 text-slate-500 border-2 border-slate-200 hover:border-blue-300'
+                                        }`}
+                                    >
+                                        Add (Opposites)
+                                    </button>
+                                    <button 
+                                        onClick={() => setDifficulty('hard')}
+                                        className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${
+                                            difficulty === 'hard' 
+                                            ? 'bg-red-100 text-red-700 border-2 border-red-500' 
+                                            : 'bg-slate-50 text-slate-500 border-2 border-slate-200 hover:border-red-300'
+                                        }`}
+                                    >
+                                        Subtract (Same)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={startGame}
+                                className={`w-full text-white font-bold py-4 rounded-xl text-xl transition-transform hover:scale-105 active:scale-95 shadow-lg ${
+                                    difficulty === 'hard' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                                }`}
+                            >
+                                Enter Arena
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'finished') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-emerald-600">
+                            <div className="text-6xl mb-4">🏆</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Arena Closed!</h1>
+                            <div className="py-8">
+                                <p className="text-gray-500 uppercase text-xs font-bold tracking-wider">Final Score</p>
+                                <p className="text-6xl font-black text-emerald-600">{score}</p>
+                            </div>
+                            <button 
+                                onClick={() => setGameState('start')}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors"
+                            >
+                                Play Again
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Determine inputs for Step 2 & 3
+            // If we haven't found a variable yet, we don't know order.
+            // But once foundVar is set:
+            // Step 2 solves 'firstVarFound'.
+            // Step 3 solves the other.
+
+            return (
+                <div className="min-h-screen max-w-2xl mx-auto p-4 flex flex-col">
+                    <GameStats streak={streak} score={score} timeLeft={timeLeft} difficulty={difficulty} />
+                    <ProgressBar timeLeft={timeLeft} totalTime={selectedMinutes * 60} />
+
+                    <div className="flex-1 flex flex-col justify-center mt-6">
+                        {system && (
+                            <div className="bg-white rounded-2xl shadow-lg border-b-4 border-slate-200 overflow-hidden">
+                                {/* Problem Display: Stacked */}
+                                <div className="bg-slate-800 p-8 text-center text-white flex flex-col items-center justify-center gap-2 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl -rotate-12">
+                                        <i className="fas fa-bars"></i>
+                                    </div>
+                                    
+                                    <div className="equation-line w-full max-w-xs pb-4 mb-4">
+                                        <div className="text-3xl md:text-4xl font-bold math-font tracking-wide text-right pr-4">
+                                            {renderEq(system.eq1.A, system.eq1.B, system.eq1.C)}
+                                        </div>
+                                        <div className="text-3xl md:text-4xl font-bold math-font tracking-wide text-right pr-4 mt-2">
+                                            {renderEq(system.eq2.D, system.eq2.E, system.eq2.F)}
+                                        </div>
+                                        {/* Operator Sign */}
+                                        <div className="absolute bottom-2 left-0 text-3xl font-bold text-slate-500">
+                                            {difficulty === 'normal' ? '+' : '–'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 md:p-8 space-y-6">
+                                    
+                                    {/* STEP 1 */}
+                                    <div className={`transition-opacity duration-300 ${step > 1 ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                        <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">
+                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded mr-2">Step 1</span>
+                                            {difficulty === 'normal' ? 'Add' : 'Subtract'} to eliminate a variable
+                                        </label>
+                                        <form onSubmit={handleCheckStep1} className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 text-lg md:text-xl font-bold math-font outline-none transition-colors"
+                                                placeholder="Resulting equation (e.g. 5x=20)..."
+                                                value={inputStep1}
+                                                onChange={(e) => setInputStep1(e.target.value)}
+                                                readOnly={step > 1}
+                                            />
+                                            {step === 1 && (
+                                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-xl font-bold shadow-lg shadow-emerald-200 transition-transform active:scale-95">
+                                                    Check
+                                                </button>
+                                            )}
+                                        </form>
+                                    </div>
+
+                                    {/* STEP 2 & 3: Solution Area */}
+                                    {step >= 2 && firstVarFound && (
+                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 border-t-2 border-slate-100 pt-6">
+                                            <div className="flex flex-col gap-4">
+                                                
+                                                {/* Variable 1 (Solved in Step 2) */}
+                                                <div className={`transition-opacity duration-300 ${step > 2 ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                                    <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">
+                                                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded mr-2">Step 2</span>
+                                                        Solve for {firstVarFound}
+                                                    </label>
+                                                    <form onSubmit={handleCheckStep2} className="flex gap-2 items-center">
+                                                        <span className="font-bold math-font text-xl text-slate-400">{firstVarFound} =</span>
+                                                        <input 
+                                                            id={`input-${firstVarFound}`}
+                                                            type="number" 
+                                                            className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl px-3 py-3 text-xl font-bold math-font outline-none transition-colors"
+                                                            value={firstVarFound === 'x' ? inputX : inputY}
+                                                            onChange={(e) => firstVarFound === 'x' ? setInputX(e.target.value) : setInputY(e.target.value)}
+                                                            placeholder="?"
+                                                            readOnly={step > 2}
+                                                        />
+                                                        {step === 2 && (
+                                                            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-transform active:scale-95">
+                                                                Check
+                                                            </button>
+                                                        )}
+                                                    </form>
+                                                </div>
+
+                                                {/* Variable 2 (Solved in Step 3) */}
+                                                {step >= 3 && (
+                                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4">
+                                                        <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">
+                                                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded mr-2">Step 3</span>
+                                                            Solve for {firstVarFound === 'x' ? 'y' : 'x'}
+                                                        </label>
+                                                        <form onSubmit={handleCheckStep3} className="flex gap-2 items-center">
+                                                            <span className="font-bold math-font text-xl text-slate-400">{firstVarFound === 'x' ? 'y' : 'x'} =</span>
+                                                            <input 
+                                                                id={`input-${firstVarFound === 'x' ? 'y' : 'x'}`}
+                                                                type="number" 
+                                                                className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-purple-500 focus:bg-white rounded-xl px-3 py-3 text-xl font-bold math-font outline-none transition-colors"
+                                                                value={firstVarFound === 'x' ? inputY : inputX}
+                                                                onChange={(e) => firstVarFound === 'x' ? setInputY(e.target.value) : setInputX(e.target.value)}
+                                                                placeholder="?"
+                                                            />
+                                                            <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-200 transition-transform active:scale-95">
+                                                                Finish
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Feedback Area */}
+                                    <Feedback status={feedback.status} message={feedback.message} />
+
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

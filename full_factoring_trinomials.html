@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinomial Box Factory</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=JetBrains+Mono:wght@500&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pop {
+            animation: pop 0.3s ease-out;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Box Grid Styling */
+        .box-grid {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 8px;
+            align-items: center;
+            justify-items: center;
+        }
+        
+        sup {
+            font-size: 0.6em;
+            vertical-align: super;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MATH UTILITIES ---
+
+        // Helpers to parse math inputs nicely
+        const cleanInput = (str) => str.replace(/\s/g, '').toLowerCase();
+
+        // Helper to format math display (x^2 -> superscript)
+        const formatMath = (str) => {
+            if (!str) return null;
+            const parts = str.toString().split(/(\^\d+)/g);
+            return parts.map((part, i) => {
+                if (part.startsWith('^')) {
+                    return <sup key={i}>{part.substring(1)}</sup>;
+                }
+                return <span key={i}>{part}</span>;
+            });
+        };
+        
+        // Evaluate simple expression at x=1, x=2 to check equivalence
+        // Updated to handle implicit multiplication like (x+1)(x-2)
+        const checkEq = (str1, str2) => {
+            const evalStr = (s, x) => {
+                try {
+                    let clean = s.replace(/\s/g, '')
+                                 .replace(/\^/g, '**')
+                                 .replace(/([0-9])x/g, '$1*x')
+                                 .replace(/\)\(/g, ')*(')     // Handle )( -> )*(
+                                 .replace(/(\d)\(/g, '$1*(')  // Handle 5( -> 5*(
+                                 .replace(/x/g, `(${x})`);
+                    return new Function(`return ${clean}`)();
+                } catch { return NaN; }
+            };
+            
+            // Check at two points to prevent coincidences
+            const v1a = evalStr(str1, 2);
+            const v2a = evalStr(str2, 2);
+            const v1b = evalStr(str1, 5);
+            const v2b = evalStr(str2, 5);
+            
+            if (isNaN(v1a) || isNaN(v2a)) return false;
+
+            return Math.abs(v1a - v2a) < 0.001 && Math.abs(v1b - v2b) < 0.001;
+        };
+
+
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ currentStep, totalSteps }) => {
+            const width = (currentStep / totalSteps) * 100;
+            return (
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-4 mb-6">
+                    <div 
+                        className="h-full bg-indigo-500 transition-all duration-500 ease-out" 
+                        style={{ width: `${width}%` }}
+                    ></div>
+                </div>
+            );
+        };
+
+        const Feedback = ({ status, message }) => {
+            if (status === 'idle') return <div className="h-14"></div>;
+
+            const styles = {
+                success: "bg-green-100 text-green-800 border-green-200",
+                error: "bg-red-100 text-red-800 border-red-200",
+                info: "bg-blue-100 text-blue-800 border-blue-200"
+            };
+
+            return (
+                <div className={`h-14 flex items-center justify-center gap-3 rounded-xl border px-6 font-bold text-lg transition-all duration-300 ${styles[status] || styles.info} ${status === 'success' ? 'pop' : 'shake'}`}>
+                    <i className={`fas ${status === 'success' ? 'fa-check-circle' : 'fa-info-circle'}`}></i>
+                    {message}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = useState('start'); 
+            const [difficulty, setDifficulty] = useState('normal'); // 'normal' (a=1), 'hard' (a>1)
+            const [score, setScore] = useState(0);
+            
+            // Problem Data
+            const [trinomial, setTrinomial] = useState(null); // { a, b, c, ac, factor1, factor2, ... }
+            
+            // Step Control: 1 (Diamond), 2 (Box Fill), 3 (Outside Factors), 4 (Final Statement)
+            const [step, setStep] = useState(1);
+            
+            // Inputs
+            // Step 1
+            const [inputAC, setInputAC] = useState('');
+            const [inputMagic1, setInputMagic1] = useState('');
+            const [inputMagic2, setInputMagic2] = useState('');
+            
+            // Step 2 (Box Inside)
+            const [boxTL, setBoxTL] = useState(''); // Top Left (ax^2)
+            const [boxTR, setBoxTR] = useState(''); // Top Right
+            const [boxBL, setBoxBL] = useState(''); // Bottom Left
+            const [boxBR, setBoxBR] = useState(''); // Bottom Right (c)
+
+            // Step 3 (Box Outside)
+            const [outTop1, setOutTop1] = useState('');
+            const [outTop2, setOutTop2] = useState('');
+            const [outLeft1, setOutLeft1] = useState('');
+            const [outLeft2, setOutLeft2] = useState('');
+
+            // Step 4 (Final Answer)
+            const [inputFinal, setInputFinal] = useState('');
+
+            const [feedback, setFeedback] = useState({ status: 'idle', message: '' });
+
+            // --- GENERATOR ---
+            const generateProblem = () => {
+                // Generate (px + q)(rx + s)
+                // Normal: p=1, r=1
+                // Hard: p or r > 1
+                
+                let p, r, q, s;
+                
+                if (difficulty === 'normal') {
+                    p = 1; r = 1;
+                    // Ensure b is not 0
+                    do {
+                        q = (Math.floor(Math.random() * 9) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                        s = (Math.floor(Math.random() * 9) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    } while (q + s === 0);
+                } else {
+                    // Hard Mode: a > 1
+                    // Keep coefficients small to keep AC manageable (under 100 if possible)
+                    p = Math.floor(Math.random() * 4) + 1; // 1 to 4
+                    r = Math.floor(Math.random() * 3) + 2; // 2 to 4
+                    q = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    s = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                }
+
+                const a = p * r;
+                const b = (p * s) + (r * q);
+                const c = q * s;
+                
+                // For logic:
+                const ac = a * c;
+                const magic1 = p * s; // These are the split terms coefficients
+                const magic2 = r * q;
+
+                const displayStr = `${a === 1 ? '' : a}x^2 ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)}x ${c >= 0 ? '+ ' + c : '- ' + Math.abs(c)}`;
+
+                setTrinomial({ 
+                    a, b, c, ac, 
+                    displayStr,
+                    magic1, magic2,
+                    factors: { p, q, r, s } // (px+q)(rx+s)
+                });
+                
+                setStep(1);
+                
+                // Reset Inputs
+                setInputAC(''); setInputMagic1(''); setInputMagic2('');
+                setBoxTL(''); setBoxTR(''); setBoxBL(''); setBoxBR('');
+                setOutTop1(''); setOutTop2(''); setOutLeft1(''); setOutLeft2('');
+                setInputFinal('');
+                setFeedback({ status: 'idle', message: '' });
+            };
+
+            const startGame = () => {
+                setScore(0);
+                setGameState('playing');
+                generateProblem();
+            };
+
+            // --- HANDLERS ---
+
+            // PHASE 1: Diamond
+            const checkPhase1 = () => {
+                const userAC = parseInt(inputAC);
+                const m1 = parseInt(inputMagic1);
+                const m2 = parseInt(inputMagic2);
+
+                if (userAC !== trinomial.ac) {
+                    setFeedback({ status: 'error', message: `Check a · c. (${trinomial.a} · ${trinomial.c})` });
+                    return;
+                }
+                
+                // Check if they multiply to AC and add to B
+                if (m1 * m2 !== trinomial.ac) {
+                    setFeedback({ status: 'error', message: "Your numbers don't multiply to a·c!" });
+                    return;
+                }
+                if (m1 + m2 !== trinomial.b) {
+                    setFeedback({ status: 'error', message: `Your numbers don't add up to b (${trinomial.b})!` });
+                    return;
+                }
+
+                setFeedback({ status: 'success', message: "Perfect! Now let's fill the box." });
+                setTimeout(() => setStep(2), 1500);
+            };
+
+            // PHASE 2: Box Fill
+            const checkPhase2 = () => {
+                // Must have ax^2 and c in corners (TL/BR or TR/BL, but usually TL/BR is standard)
+                // The other two must be magic1*x and magic2*x
+                
+                const inputs = [boxTL, boxTR, boxBL, boxBR];
+                // Evaluate inputs
+                
+                // 1. Find the x^2 term
+                const termA = `${trinomial.a}x^2`;
+                const hasA = inputs.some(i => checkEq(i, termA));
+                
+                // 2. Find the constant
+                const termC = `${trinomial.c}`;
+                const hasC = inputs.some(i => checkEq(i, termC));
+                
+                // 3. Find the x terms
+                // We expect inputs like "4x" and "-10x"
+                const termM1 = `${trinomial.magic1}x`;
+                const termM2 = `${trinomial.magic2}x`;
+                
+                // Count matches
+                let matchesM1 = inputs.filter(i => checkEq(i, termM1)).length;
+                let matchesM2 = inputs.filter(i => checkEq(i, termM2)).length;
+                
+                // Edge case: if magic numbers are same (e.g. 4x and 4x), matchesM1 will be 2
+                const validXTerms = (trinomial.magic1 === trinomial.magic2) ? matchesM1 >= 2 : (matchesM1 >= 1 && matchesM2 >= 1);
+
+                if (!hasA) {
+                    setFeedback({ status: 'error', message: `You are missing the first term (${termA})!` });
+                    return;
+                }
+                if (!hasC) {
+                    setFeedback({ status: 'error', message: `You are missing the last term (${termC})!` });
+                    return;
+                }
+                if (!validXTerms) {
+                    setFeedback({ status: 'error', message: "Check your split x-terms (from Step 1)." });
+                    return;
+                }
+
+                // Enforce Standard Position for easier GCF?
+                // Usually TopLeft = ax^2, BottomRight = c.
+                if (!checkEq(boxTL, termA)) {
+                    setFeedback({ status: 'info', message: "Standard form: Put the squared term in the top-left." });
+                    return;
+                }
+                 if (!checkEq(boxBR, termC)) {
+                    setFeedback({ status: 'info', message: "Standard form: Put the constant in the bottom-right." });
+                    return;
+                }
+
+                setFeedback({ status: 'success', message: "Box loaded! Now extract the GCFs." });
+                setTimeout(() => setStep(3), 1500);
+            };
+
+            // PHASE 3: Extraction
+            const checkPhase3 = () => {
+                // Check if Rows multiply to cells
+                const t1 = outTop1 || "1";
+                const t2 = outTop2 || "1";
+                const l1 = outLeft1 || "1";
+                const l2 = outLeft2 || "1";
+
+                const validCell = (f1, f2, boxVal) => {
+                    const product = `(${f1}) * (${f2})`;
+                    return checkEq(product, boxVal);
+                };
+
+                if (!validCell(t1, l1, boxTL)) { setFeedback({ status: 'error', message: "Top-Left GCFs don't multiply to the cell inside." }); return; }
+                if (!validCell(t2, l1, boxTR)) { setFeedback({ status: 'error', message: "Top-Right check failed. Check the GCFs." }); return; }
+                if (!validCell(t1, l2, boxBL)) { setFeedback({ status: 'error', message: "Bottom-Left check failed. Check the GCFs." }); return; }
+                if (!validCell(t2, l2, boxBR)) { setFeedback({ status: 'error', message: "Bottom-Right check failed." }); return; }
+
+                setFeedback({ status: 'success', message: "Factors extracted! Now write the final answer." });
+                setTimeout(() => setStep(4), 1500);
+            };
+            
+            // PHASE 4: Final Answer
+            const checkPhase4 = () => {
+                // Ensure parenthesis usage
+                if (!inputFinal.includes('(') || !inputFinal.includes(')')) {
+                     setFeedback({ status: 'error', message: "Please use parentheses for your factors. e.g. (x+2)(x-3)" });
+                     return;
+                }
+                
+                // Compare inputFinal with trinomial.displayStr (mathematically equivalent)
+                if (checkEq(inputFinal, trinomial.displayStr)) {
+                     setScore(s => s + (difficulty === 'hard' ? 20 : 10));
+                     setFeedback({ status: 'success', message: "Great Job! Factory Work Complete." });
+                     setTimeout(generateProblem, 2500);
+                } else {
+                     setFeedback({ status: 'error', message: "That doesn't match the original expression. Check your factors." });
+                }
+            };
+
+
+            if (gameState === 'start') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-indigo-600">
+                            <div className="text-6xl mb-4">🏭</div>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Trinomial Box Factory</h1>
+                            <p className="text-slate-500 mb-6">Master the Box Method for factoring.</p>
+                            
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Difficulty</label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setDifficulty('normal')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'normal' ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                        Normal (a=1)
+                                    </button>
+                                    <button onClick={() => setDifficulty('hard')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'hard' ? 'bg-purple-100 text-purple-700 border-2 border-purple-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                        Hard (a>1)
+                                    </button>
+                                </div>
+                            </div>
+                            <button onClick={startGame} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-transform active:scale-95">Open Factory</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen max-w-2xl mx-auto p-4 flex flex-col">
+                    <div className="flex justify-between items-end mb-4">
+                        <h1 className="text-2xl font-bold text-slate-700">Trinomial Box Factory</h1>
+                        <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Score</span>
+                            <span className="text-2xl font-black text-indigo-600">{score}</span>
+                        </div>
+                    </div>
+                    
+                    {trinomial && (
+                        <div className="bg-white rounded-2xl shadow-lg border-b-4 border-slate-200 overflow-hidden">
+                            {/* Problem Display */}
+                            <div className="bg-slate-800 p-8 text-center text-white">
+                                <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Factor the Trinomial</div>
+                                <div className="text-4xl font-bold math-font tracking-wider">
+                                    {formatMath(trinomial.displayStr)}
+                                </div>
+                            </div>
+
+                            <div className="p-6">
+                                <ProgressBar currentStep={step} totalSteps={4} />
+
+                                {/* PHASE 1: DIAMOND */}
+                                <div className={`transition-all duration-500 ${step > 1 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                    <div className="flex items-center mb-4">
+                                        <div className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">1</div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-700">The Split</h3>
+                                            <p className="text-xs text-slate-500">Find factors of a·c that add to b</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-center bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 relative">
+                                        {/* X Graphic */}
+                                        <div className="relative w-48 h-48">
+                                            {/* Lines */}
+                                            <div className="absolute top-0 left-0 w-full h-full">
+                                                <svg viewBox="0 0 100 100" className="w-full h-full stroke-slate-300 stroke-[2]">
+                                                    <line x1="0" y1="0" x2="100" y2="100" />
+                                                    <line x1="100" y1="0" x2="0" y2="100" />
+                                                </svg>
+                                            </div>
+                                            
+                                            {/* Inputs/Displays */}
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20">
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full bg-white border-2 border-slate-300 focus:border-indigo-500 rounded-lg p-2 text-center font-bold" 
+                                                    placeholder="a·c"
+                                                    value={inputAC}
+                                                    onChange={e => setInputAC(e.target.value)}
+                                                    readOnly={step > 1}
+                                                />
+                                            </div>
+                                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-20 bg-slate-200 rounded-lg p-2 text-center font-bold text-slate-600">
+                                                {trinomial.b}
+                                            </div>
+                                            <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16">
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" 
+                                                    placeholder="#"
+                                                    value={inputMagic1}
+                                                    onChange={e => setInputMagic1(e.target.value)}
+                                                    readOnly={step > 1}
+                                                />
+                                            </div>
+                                            <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-16">
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" 
+                                                    placeholder="#"
+                                                    value={inputMagic2}
+                                                    onChange={e => setInputMagic2(e.target.value)}
+                                                    readOnly={step > 1}
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        {step === 1 && (
+                                            <button onClick={checkPhase1} className="mt-8 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">
+                                                Check Split
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* PHASE 2 & 3: THE BOX */}
+                                {step >= 2 && (
+                                    <div className={`fade-in border-t-2 border-slate-100 pt-6 ${step > 3 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                        <div className="flex items-center mb-6">
+                                            <div className="bg-purple-100 text-purple-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">{step > 3 ? '2&3' : step}</div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-700">{step === 2 ? 'Load the Box' : 'Extract Factors'}</h3>
+                                                <p className="text-xs text-slate-500">{step === 2 ? 'Place first, last, and split terms' : 'Find GCFs for rows and columns'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-center mb-6">
+                                            {/* CSS Grid for the Box + Outside inputs */}
+                                            <div className="box-grid">
+                                                {/* Top-Left Empty Corner */}
+                                                <div></div>
+                                                
+                                                {/* Top Inputs (Cols) */}
+                                                <div className="w-20">
+                                                    {(step >= 3) && (
+                                                        <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop1} onChange={e => setOutTop1(e.target.value)} readOnly={step > 3} />
+                                                    )}
+                                                </div>
+                                                <div className="w-20">
+                                                    {(step >= 3) && (
+                                                        <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop2} onChange={e => setOutTop2(e.target.value)} readOnly={step > 3} />
+                                                    )}
+                                                </div>
+
+                                                {/* Left Input 1 (Row 1) */}
+                                                <div className="h-20 flex items-center justify-end pr-2">
+                                                    {(step >= 3) && (
+                                                        <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft1} onChange={e => setOutLeft1(e.target.value)} readOnly={step > 3} />
+                                                    )}
+                                                </div>
+
+                                                {/* Box Cell TL */}
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 rounded-tl-xl flex items-center justify-center p-1">
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
+                                                        placeholder="ax²"
+                                                        value={boxTL}
+                                                        onChange={e => setBoxTL(e.target.value)}
+                                                        readOnly={step > 2}
+                                                    />
+                                                </div>
+
+                                                {/* Box Cell TR */}
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-l-0 rounded-tr-xl flex items-center justify-center p-1">
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
+                                                        placeholder="x-term"
+                                                        value={boxTR}
+                                                        onChange={e => setBoxTR(e.target.value)}
+                                                        readOnly={step > 2}
+                                                    />
+                                                </div>
+
+                                                {/* Left Input 2 (Row 2) */}
+                                                <div className="h-20 flex items-center justify-end pr-2">
+                                                    {(step >= 3) && (
+                                                        <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft2} onChange={e => setOutLeft2(e.target.value)} readOnly={step > 3} />
+                                                    )}
+                                                </div>
+
+                                                {/* Box Cell BL */}
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 rounded-bl-xl flex items-center justify-center p-1">
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
+                                                        placeholder="x-term"
+                                                        value={boxBL}
+                                                        onChange={e => setBoxBL(e.target.value)}
+                                                        readOnly={step > 2}
+                                                    />
+                                                </div>
+
+                                                {/* Box Cell BR */}
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 border-l-0 rounded-br-xl flex items-center justify-center p-1">
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
+                                                        placeholder="c"
+                                                        value={boxBR}
+                                                        onChange={e => setBoxBR(e.target.value)}
+                                                        readOnly={step > 2}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-center">
+                                            {step === 2 && (
+                                                <button onClick={checkPhase2} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+                                                    Check Box
+                                                </button>
+                                            )}
+                                            {step === 3 && (
+                                                <button onClick={checkPhase3} className="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+                                                    Verify Factors
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* PHASE 4: FINAL ANSWER */}
+                                {step === 4 && (
+                                    <div className="fade-in border-t-2 border-slate-100 pt-6 mt-6">
+                                        <div className="flex items-center mb-4">
+                                            <div className="bg-green-100 text-green-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">4</div>
+                                            <h3 className="font-bold text-slate-700">Final Answer</h3>
+                                        </div>
+                                        <div className="flex flex-col md:flex-row items-center justify-center gap-2 text-xl font-bold text-slate-700">
+                                            <span>{formatMath(trinomial.displayStr)}</span>
+                                            <span>=</span>
+                                            <input 
+                                                type="text" 
+                                                className="bg-green-50 border-2 border-green-200 focus:border-green-500 rounded-lg px-4 py-2 w-64 text-center font-bold math-font"
+                                                placeholder="(...)(...)"
+                                                value={inputFinal}
+                                                onChange={e => setInputFinal(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex justify-center mt-4">
+                                            <button onClick={checkPhase4} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+                                                Complete
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-6">
+                                    <Feedback status={feedback.status} message={feedback.message} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
