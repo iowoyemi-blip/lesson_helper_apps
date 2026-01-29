@@ -222,6 +222,9 @@
             const [inputStep2, setInputStep2] = useState('');
             const [feedback, setFeedback] = useState({ status: 'idle', message: '' });
 
+            // Bug fix: Lock state to prevent multiple submissions
+            const [isTransitioning, setIsTransitioning] = useState(false);
+
             const timerRef = useRef(null);
 
             // --- GENERATOR LOGIC ---
@@ -239,9 +242,6 @@
                     B = Math.floor(Math.random() * 19) - 9; 
                 } while (B === 0);
 
-                // Make C a multiple of something or just random? 
-                // Let's make it random but maybe check if we want clean division sometimes.
-                // For now, pure random integers.
                 C = Math.floor(Math.random() * 25) - 12;
 
                 setProblem({ A, B, C });
@@ -249,6 +249,7 @@
                 setInputStep1('');
                 setInputStep2('');
                 setFeedback({ status: 'idle', message: '' });
+                setIsTransitioning(false); // Reset the lock
             };
 
             // --- GAME LOOP ---
@@ -301,17 +302,21 @@
                     setTimeout(() => document.getElementById('step2-input')?.focus(), 100);
                 } else {
                     setFeedback({ status: 'error', message: `Not quite. Move the ${problem.A}x term to the right side.` });
-                    setStreak(0); // Optional: Reset streak on partial fail? Or only on total fail? Let's reset to be strict.
+                    setStreak(0); 
                 }
             };
 
             const handleCheckStep2 = (e) => {
                 e.preventDefault();
-                // Target: y = (-A/B)x + (C/B)
                 
+                // Prevent spam clicking while animation/timeout is running
+                if (isTransitioning) return;
+
+                // Target: y = (-A/B)x + (C/B)
                 const valid = checkEquation(inputStep2, 'y', -problem.A / problem.B, problem.C / problem.B);
 
                 if (valid) {
+                    setIsTransitioning(true); // Lock input
                     setScore(prev => prev + 10 + (streak * 2)); // Bonus for streak
                     setStreak(prev => prev + 1);
                     setFeedback({ status: 'success', message: 'Perfect! Next Problem.' });
@@ -452,9 +457,14 @@
                                                     placeholder="y = ..."
                                                     value={inputStep2}
                                                     onChange={(e) => setInputStep2(e.target.value)}
+                                                    readOnly={isTransitioning}
                                                 />
-                                                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-transform active:scale-95">
-                                                    Verify
+                                                <button 
+                                                    type="submit" 
+                                                    disabled={isTransitioning}
+                                                    className={`bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-transform active:scale-95 ${isTransitioning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                >
+                                                    {isTransitioning ? 'Success!' : 'Verify'}
                                                 </button>
                                             </form>
                                         </div>
