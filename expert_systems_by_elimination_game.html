@@ -280,7 +280,7 @@
                 } else {
                     // EXPERT: No immediate elimination
                     // Pick D, E such that they are NOT multiples of A, B immediately, or at least require mult
-                    // Simple strategy: Pick random small ints 2-5, avoid exact matches/opposites
+                    // Simple strategy: Pick random small ints 2-5
                     do {
                         D = (Math.floor(Math.random() * 5) + 2) * (Math.random() > 0.5 ? 1 : -1);
                     } while (Math.abs(D) === Math.abs(A));
@@ -288,6 +288,15 @@
                     do {
                         E = (Math.floor(Math.random() * 5) + 2) * (Math.random() > 0.5 ? 1 : -1);
                     } while (Math.abs(E) === Math.abs(B));
+                }
+
+                // CRITICAL FIX: Ensure Determinant (A*E - B*D) is NOT zero
+                // This prevents Infinite Solutions (Parallel Lines)
+                // If A/D == B/E, the lines are parallel.
+                while (A * E === B * D) {
+                    // Shift E slightly to break the proportion
+                    E += 1;
+                    if (E === 0) E = 2; // Avoid zero coef just in case
                 }
 
                 F = D * x + E * y;
