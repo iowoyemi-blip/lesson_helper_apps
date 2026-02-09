@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graphing Linear Inequalities</title>
+    <title>Graphing Systems of Linear Inequalities</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Use the Inter font family */
@@ -35,6 +35,8 @@
             width: 100%;
             height: 100%;
             overflow: hidden; /* Keep shade inside */
+            /* This makes the overlaps look correct */
+            mix-blend-mode: multiply;
         }
         .grid-line {
             stroke: #e5e7eb; /* Light gray */
@@ -51,21 +53,31 @@
         }
         /* Student-drawn elements */
         .student-point {
-            fill: #2563eb; /* blue-600 */
             stroke: #ffffff;
             stroke-width: 2;
         }
+        .student-point-1 { fill: #2563eb; } /* Blue */
+        .student-point-2 { fill: #db2777; } /* Pink/Red */
+
         .student-line {
-            stroke: #2563eb; /* blue-600 */
             stroke-width: 3;
         }
+        .student-line-1 { stroke: #2563eb; }
+        .student-line-2 { stroke: #db2777; }
         .student-line-dashed {
             stroke-dasharray: 5 5;
         }
-        .shade-region {
+        /* Two different shade colors */
+        .shade-region-1 {
             fill: #2563eb; /* blue-600 */
             opacity: 0.3;
         }
+        .shade-region-2 {
+            fill: #db2777; /* pink-600 */
+            opacity: 0.3;
+        }
+        
+        /* Correct answer styling */
         .correct-line {
             stroke: #16a34a; /* green-600 */
             stroke-width: 4;
@@ -73,10 +85,15 @@
         .correct-line-dashed {
             stroke-dasharray: 6 6;
         }
-        .correct-shade {
+        .correct-shade-1 {
             fill: #16a34a; /* green-600 */
-            opacity: 0.3;
+            opacity: 0.2;
         }
+        .correct-shade-2 {
+            fill: #059669; /* emerald-600 */
+            opacity: 0.2;
+        }
+
         /* Style for line style buttons */
         .style-btn {
             background-color: #f3f4f6; /* gray-100 */
@@ -98,8 +115,8 @@
 
     <div class="max-w-xl w-full">
         <header class="mb-6">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Graphing Linear Inequalities</h1>
-            <p class="text-lg text-gray-600 text-center mt-2">Graph the inequality in 3 steps</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Graphing Systems of Inequalities</h1>
+            <p class="text-lg text-gray-600 text-center mt-2">Graph both inequalities step-by-step</p>
             <div id="game-stats" class="text-2xl font-bold text-center mt-4 text-gray-700 flex justify-center gap-6">
                 <div id="lives-counter" class="text-red-500">Lives: ❤️❤️❤️</div>
                 <div id="score-counter" class="text-blue-600">Score: 0</div>
@@ -108,9 +125,10 @@
 
         <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
             <div class="text-center">
-                <p class="text-lg text-gray-600">Graph the following inequality:</p>
-                <p id="equation-display" class="text-4xl font-bold text-blue-600 my-3" style="font-family: 'Times New Roman', Times, serif;">y &lt; 2x + 1</p>
-                <p id="instruction-text" class="text-lg text-gray-700 font-semibold h-6">1. Click the y-intercept.</p>
+                <p class="text-lg text-gray-600">Graph the following system:</p>
+                <p id="equation-display-1" class="text-3xl font-bold text-blue-600 my-2" style="font-family: 'Times New Roman', Times, serif;">y &lt; 2x + 1</p>
+                <p id="equation-display-2" class="text-3xl font-bold text-pink-600 my-2" style="font-family: 'Times New Roman', Times, serif;">y &ge; -x + 3</p>
+                <p id="instruction-text" class="text-lg text-gray-700 font-semibold h-6 mt-4">Inequality 1: Click the y-intercept.</p>
             </div>
 
             <div class="my-4">
@@ -148,7 +166,8 @@
         // --- DOM Elements ---
         const graphContainer = document.getElementById('graph-container');
         const svgGrid = document.getElementById('svg-grid');
-        const equationDisplay = document.getElementById('equation-display');
+        const eqDisplay1 = document.getElementById('equation-display-1');
+        const eqDisplay2 = document.getElementById('equation-display-2');
         const instructionText = document.getElementById('instruction-text');
         const feedbackArea = document.getElementById('feedback-area');
         const checkBtn = document.getElementById('check-btn');
@@ -165,17 +184,16 @@
         let lives = 3;
         let score = 0;
         let isGameOver = false;
-        let currentEquation = {};
-        let clickedPoints = []; // Stores {x, y} cartesian coordinates
-        let chosenLineStyle = null; // 'solid' or 'dashed'
-        let clickedShadeSide = null; // 'above' or 'below' (UPDATED)
-        let nextEquationType = 'slopeIntercept'; // 'slopeIntercept' or 'standardForm'
+        let currentSystem = { eq1: {}, eq2: {} };
+        let userInput = { eq1: {}, eq2: {} };
+        let currentStep = 'eq1_p1';
+        let nextEquationType = 'slopeIntercept';
 
         // --- Graphing Constants ---
         const SVG_SIZE = 480;
-        const GRID_RANGE = 8; // -8 to 8
-        const NUM_GRIDS = GRID_RANGE * 2; // 16
-        const GRID_SIZE = SVG_SIZE / NUM_GRIDS; // 30px
+        const GRID_RANGE = 8;
+        const NUM_GRIDS = GRID_RANGE * 2;
+        const GRID_SIZE = SVG_SIZE / NUM_GRIDS;
         const MID = SVG_SIZE / 2;
 
         // --- Helper: Get Random Integer ---
@@ -195,52 +213,44 @@
         function toPixelCoords(cx, cy) {
             return {
                 x: MID + (cx * GRID_SIZE),
-                y: MID - (cy * GRID_SIZE) // SVG y-axis is inverted
+                y: MID - (cy * GRID_SIZE)
             };
         }
 
         function toCartesianCoords(px, py) {
             return {
                 x: Math.round((px - MID) / GRID_SIZE),
-                y: Math.round((MID - py) / GRID_SIZE) // SVG y-axis is inverted
+                y: Math.round((MID - py) / GRID_SIZE)
             };
         }
 
         // --- SVG Drawing ---
         function createSvgGrid() {
             svgGrid.innerHTML = ''; // Clear previous grid
-
-            // Draw grid lines
             for (let i = 0; i <= NUM_GRIDS; i++) {
                 let pos = i * GRID_SIZE;
-                // Horizontal
                 let hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 hLine.setAttribute('x1', 0); hLine.setAttribute('y1', pos);
                 hLine.setAttribute('x2', SVG_SIZE); hLine.setAttribute('y2', pos);
                 hLine.classList.add('grid-line');
                 svgGrid.appendChild(hLine);
-                // Vertical
                 let vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 vLine.setAttribute('x1', pos); vLine.setAttribute('y1', 0);
                 vLine.setAttribute('x2', pos); vLine.setAttribute('y2', SVG_SIZE);
                 vLine.classList.add('grid-line');
                 svgGrid.appendChild(vLine);
             }
-
-            // Draw axes
             let xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             xAxis.setAttribute('x1', 0); xAxis.setAttribute('y1', MID);
             xAxis.setAttribute('x2', SVG_SIZE); xAxis.setAttribute('y2', MID);
             xAxis.classList.add('axis-line');
             svgGrid.appendChild(xAxis);
-
             let yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             yAxis.setAttribute('x1', MID); yAxis.setAttribute('y1', 0);
             yAxis.setAttribute('x2', MID); yAxis.setAttribute('y2', SVG_SIZE);
             yAxis.classList.add('axis-line');
             svgGrid.appendChild(yAxis);
 
-            // Add axis labels
             function addLabel(x, y, text, align = 'middle', baseline = 'central') {
                 let label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 label.setAttribute('x', x);
@@ -251,9 +261,8 @@
                 label.classList.add('axis-label');
                 svgGrid.appendChild(label);
             }
-
             for(let i = 1; i <= GRID_RANGE; i++) {
-                if (i % 2 === 0) { // Label every 2 units
+                if (i % 2 === 0) {
                     addLabel(MID + (i * GRID_SIZE), MID + 12, i); // +x
                     addLabel(MID - (i * GRID_SIZE), MID + 12, -i); // -x
                     addLabel(MID - 12, MID - (i * GRID_SIZE), i, 'end'); // +y
@@ -262,14 +271,14 @@
             }
         }
 
-        function drawPoint(cx, cy, id) {
+        function drawPoint(cx, cy, id, pointClass) {
             const p = toPixelCoords(cx, cy);
             let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             circle.setAttribute('id', id);
             circle.setAttribute('cx', p.x);
             circle.setAttribute('cy', p.y);
             circle.setAttribute('r', 5);
-            circle.classList.add('student-point');
+            circle.classList.add('student-point', pointClass);
             svgGrid.appendChild(circle);
         }
 
@@ -287,10 +296,8 @@
             line.setAttribute('y1', px1.y);
             line.setAttribute('x2', px2.x);
             line.setAttribute('y2', px2.y);
-            
-            const classes = lineClass.split(' '); 
-            line.classList.add(...classes); 
-            
+            const classes = lineClass.split(' ');
+            line.classList.add(...classes);
             svgGrid.appendChild(line);
         }
         
@@ -298,7 +305,6 @@
             // UPDATED: side is now 'above' or 'below'
             const shadeAbove = (side === 'above');
 
-            // Get the 4 corner points of the polygon
             const p1 = toPixelCoords(-GRID_RANGE, m * -GRID_RANGE + b); // Line Left
             const p2 = toPixelCoords(GRID_RANGE, m * GRID_RANGE + b); // Line Right
             let c1, c2;
@@ -319,157 +325,83 @@
         }
 
         function clearStudentDrawings() {
-            const p1 = document.getElementById('point-1');
-            const p2 = document.getElementById('point-2');
-            const line = document.getElementById('student-line');
-            const shade = document.getElementById('student-shade');
-            const answerLine = document.getElementById('answer-line');
-            const answerShade = document.getElementById('answer-shade');
-
-            if (p1) p1.remove();
-            if (p2) p2.remove();
-            if (line) line.remove();
-            if (shade) shade.remove();
-            if (answerLine) answerLine.remove();
-            if (answerShade) answerShade.remove();
+            const elements = [
+                'point-1-1', 'point-1-2', 'student-line-1', 'student-shade-1',
+                'point-2-1', 'point-2-2', 'student-line-2', 'student-shade-2',
+                'answer-line-1', 'answer-shade-1', 'answer-line-2', 'answer-shade-2'
+            ];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            });
         }
 
         // --- Problem Generation ---
-        function generateProblem() {
-            if (isGameOver) return;
-
+        function createInequality() {
             let m, b;
-            do {
-                m = getRandomInt(-3, 3);
-            } while (m === 0); // No horizontal/vertical lines
-            
+            do { m = getRandomInt(-3, 3); } while (m === 0);
             b = getRandomInt(-5, 5);
             
             const inequalityTypes = ['<', '>', '≤', '≥'];
             const inequalitySymbol = inequalityTypes[getRandomInt(0, 3)];
             const isSolid = inequalitySymbol === '≤' || inequalitySymbol === '≥';
+            let A, B, C, displayHTML, checkSymbol;
 
-            let A, B, C;
-            
             if (nextEquationType === 'slopeIntercept') {
+                A = m; B = -1; C = -b;
                 // y [op] mx + b  =>  mx - y [op] -b
-                A = m;
-                B = -1;
-                C = -b;
-                // Adjust operator for B=-1
-                // y > mx + b => mx - y < -b
-                // y < mx + b => mx - y > -b
-                let opForCheck;
-                if (inequalitySymbol === '>') opForCheck = '<';
-                if (inequalitySymbol === '<') opForCheck = '>';
-                if (inequalitySymbol === '≥') opForCheck = '≤';
-                if (inequalitySymbol === '≤') opForCheck = '≥';
+                
+                // Flip logic check handled by robust "Test Y=1000" below
+                checkSymbol = inequalitySymbol; // Just store original for now
                 
                 let mStr = (m === 1) ? "x" : (m === -1) ? "-x" : `${m}x`;
                 let bStr = (b > 0) ? `+ ${b}` : (b < 0) ? `- ${Math.abs(b)}` : "";
-                equationDisplay.innerHTML = `y ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${mStr} ${bStr}`;
-                
-                currentEquation = { m, b, A, B, C, isSolid, inequalitySymbol: opForCheck };
+                displayHTML = `y ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${mStr} ${bStr}`;
                 nextEquationType = 'standardForm';
             } else {
-                // Generate Ax + By [op] C form
-                // From y = mx + b => -mx + y = b
-                if (m > 0) { // e.g., y = 2x + 3  =>  -2x + y = 3 => 2x - y = -3
-                    A = m; B = -1; C = -b;
-                } else { // e.g., y = -2x + 3 =>  2x + y = 3
-                    A = -m; B = 1; C = b;
-                }
+                if (m > 0) { A = m; B = -1; C = -b; } 
+                else { A = -m; B = 1; C = b; }
                 
-                let opForCheck = inequalitySymbol;
-                // If B is negative, we must flip the inequality sign for our *check*
-                if (B < 0) {
-                    if (inequalitySymbol === '>') opForCheck = '<';
-                    else if (inequalitySymbol === '<') opForCheck = '>';
-                    else if (inequalitySymbol === '≥') opForCheck = '≤';
-                    else if (inequalitySymbol === '≤') opForCheck = '≥';
-                }
+                checkSymbol = inequalitySymbol;
 
                 let A_str = (A === 1) ? "x" : `${A}x`;
                 let B_str = (B === 1) ? "+ y" : (B === -1) ? "- y" : (B > 0) ? `+ ${B}y` : `- ${Math.abs(B)}y`;
-                
-                equationDisplay.innerHTML = `${A_str} ${B_str} ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${C}`;
-                currentEquation = { m, b, A, B, C, isSolid, inequalitySymbol: opForCheck };
+                displayHTML = `${A_str} ${B_str} ${inequalitySymbol.replace('<=', '&le;').replace('>=', '&ge;')} ${C}`;
                 nextEquationType = 'slopeIntercept';
             }
 
             // NEW: Determine if correct region is Above or Below by testing Y = 1000
-            // We rely on A, B, C and opForCheck
+            // This robustly handles the "divide by negative flips sign" rule without complex if-checks.
+            // If B is negative (e.g., -y > ...), testing a large positive Y will fail if it expects positive Y, effectively flipping.
             const val = A * 0 + B * 1000;
-            const op = currentEquation.inequalitySymbol;
-            const cVal = currentEquation.C;
+            const op = inequalitySymbol; // Use original symbol
+            const cVal = C;
             
-            if (op === '<') currentEquation.shadeAbove = (val < cVal);
-            else if (op === '>') currentEquation.shadeAbove = (val > cVal);
-            else if (op === '≤') currentEquation.shadeAbove = (val <= cVal);
-            else if (op === '≥') currentEquation.shadeAbove = (val >= cVal);
+            let shadeAbove = false;
+            if (op === '<') shadeAbove = (val < cVal);
+            else if (op === '>') shadeAbove = (val > cVal);
+            else if (op === '≤') shadeAbove = (val <= cVal);
+            else if (op === '≥') shadeAbove = (val >= cVal);
 
+            let equation = { m, b, A, B, C, isSolid, displayHTML, shadeAbove };
+            return equation;
+        }
+
+        function generateProblem() {
+            if (isGameOver) return;
+            let eq1 = createInequality();
+            let eq2 = createInequality();
+            // Ensure slopes are different
+            while (eq1.m === eq2.m) {
+                eq2 = createInequality();
+            }
+            currentSystem = { eq1, eq2 };
+            eqDisplay1.innerHTML = eq1.displayHTML;
+            eqDisplay2.innerHTML = eq2.displayHTML;
             resetState();
         }
 
         // --- Game Logic ---
-        function handleGraphClick(event) {
-            const rect = svgGrid.getBoundingClientRect();
-            const px = event.clientX - rect.left;
-            const py = event.clientY - rect.top;
-            const p = toCartesianCoords(px, py);
-            
-            if (clickedPoints.length === 0) {
-                // First click (y-intercept)
-                clickedPoints.push(p);
-                drawPoint(p.x, p.y, 'point-1');
-                instructionText.textContent = '2. Click a second point for the boundary line.';
-                resetBtn.classList.remove('hidden');
-            } else if (clickedPoints.length === 1) {
-                // Second click (slope point)
-                if (p.x === clickedPoints[0].x && p.y === clickedPoints[0].y) return; // Ignore same point
-                
-                clickedPoints.push(p);
-                drawPoint(p.x, p.y, 'point-2');
-                instructionText.textContent = "3. Choose the line style.";
-                stylePicker.classList.remove('hidden');
-                graphContainer.style.pointerEvents = 'none'; // Disable graph clicks
-            } else if (clickedPoints.length === 2 && chosenLineStyle) {
-                // Third click (shading)
-                // UPDATED: Calculate slope/intercept from STUDENT points
-                const { m, b } = getLineFromPoints(clickedPoints[0], clickedPoints[1]);
-                
-                // Determine if click is above or below the student line
-                const yOnLine = m * p.x + b;
-                clickedShadeSide = (p.y > yOnLine) ? 'above' : 'below';
-                
-                // Draw the shade
-                drawShadeRegion(m, b, clickedShadeSide, 'student-shade', 'shade-region');
-
-                instructionText.textContent = "Check your work!";
-                checkBtn.classList.remove('hidden');
-                graphContainer.style.pointerEvents = 'none'; // Disable clicks
-            }
-        }
-
-        function handleStyleClick(style) {
-            chosenLineStyle = style;
-            solidBtn.classList.toggle('style-btn-active', style === 'solid');
-            dashedBtn.classList.toggle('style-btn-active', style === 'dashed');
-
-            // Draw the student's line
-            const existingLine = document.getElementById('student-line');
-            if (existingLine) existingLine.remove();
-            
-            const { m, b } = getLineFromPoints(clickedPoints[0], clickedPoints[1]);
-            let lineClass = 'student-line';
-            if (style === 'dashed') lineClass += ' student-line-dashed';
-            drawFullLine(m, b, 'student-line', lineClass);
-
-            instructionText.textContent = "4. Click the correct region to shade.";
-            graphContainer.style.pointerEvents = 'auto'; // Re-enable for shading
-            stylePicker.classList.add('hidden');
-        }
-
         function getLineFromPoints(p1, p2) {
             if (p1.x === p2.x) return { m: Infinity, b: undefined }; // Vertical
             const m = (p2.y - p1.y) / (p2.x - p1.x);
@@ -477,14 +409,110 @@
             return { m, b };
         }
 
+        function handleGraphClick(event) {
+            const rect = svgGrid.getBoundingClientRect();
+            const px = event.clientX - rect.left;
+            const py = event.clientY - rect.top;
+            const p = toCartesianCoords(px, py);
+
+            switch(currentStep) {
+                case 'eq1_p1':
+                    userInput.eq1.p1 = p;
+                    drawPoint(p.x, p.y, 'point-1-1', 'student-point-1');
+                    instructionText.textContent = 'Inequality 1: Click a second point.';
+                    resetBtn.classList.remove('hidden');
+                    currentStep = 'eq1_p2';
+                    break;
+                case 'eq1_p2':
+                    if (p.x === userInput.eq1.p1.x && p.y === userInput.eq1.p1.y) return;
+                    userInput.eq1.p2 = p;
+                    drawPoint(p.x, p.y, 'point-1-2', 'student-point-1');
+                    instructionText.textContent = "Inequality 1: Choose the line style.";
+                    stylePicker.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'eq1_style';
+                    break;
+                case 'eq1_shade':
+                    // UPDATED: Calculate slope/intercept from STUDENT points
+                    const { m: m1, b: b1 } = getLineFromPoints(userInput.eq1.p1, userInput.eq1.p2);
+                    
+                    // Determine if click is above or below the student line
+                    const yOnLine1 = m1 * p.x + b1;
+                    userInput.eq1.shadeSide = (p.y > yOnLine1) ? 'above' : 'below';
+                    
+                    drawShadeRegion(m1, b1, userInput.eq1.shadeSide, 'student-shade-1', 'shade-region-1');
+                    
+                    instructionText.textContent = "Inequality 2: Click the y-intercept.";
+                    currentStep = 'eq2_p1';
+                    break;
+                case 'eq2_p1':
+                    userInput.eq2.p1 = p;
+                    drawPoint(p.x, p.y, 'point-2-1', 'student-point-2');
+                    instructionText.textContent = 'Inequality 2: Click a second point.';
+                    currentStep = 'eq2_p2';
+                    break;
+                case 'eq2_p2':
+                    if (p.x === userInput.eq2.p1.x && p.y === userInput.eq2.p1.y) return;
+                    userInput.eq2.p2 = p;
+                    drawPoint(p.x, p.y, 'point-2-2', 'student-point-2');
+                    instructionText.textContent = "Inequality 2: Choose the line style.";
+                    stylePicker.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'eq2_style';
+                    break;
+                case 'eq2_shade':
+                    // UPDATED: Calculate slope/intercept from STUDENT points
+                    const { m: m2, b: b2 } = getLineFromPoints(userInput.eq2.p1, userInput.eq2.p2);
+                    
+                    // Determine if click is above or below the student line
+                    const yOnLine2 = m2 * p.x + b2;
+                    userInput.eq2.shadeSide = (p.y > yOnLine2) ? 'above' : 'below';
+                    
+                    drawShadeRegion(m2, b2, userInput.eq2.shadeSide, 'student-shade-2', 'shade-region-2');
+                    
+                    instructionText.textContent = "Check your work!";
+                    checkBtn.classList.remove('hidden');
+                    graphContainer.style.pointerEvents = 'none';
+                    currentStep = 'check';
+                    break;
+            }
+        }
+
+        function handleStyleClick(style) {
+            if (currentStep === 'eq1_style') {
+                userInput.eq1.style = style;
+                const { m, b } = getLineFromPoints(userInput.eq1.p1, userInput.eq1.p2);
+                let lineClass = 'student-line student-line-1';
+                if (style === 'dashed') lineClass += ' student-line-dashed';
+                drawFullLine(m, b, 'student-line-1', lineClass);
+
+                instructionText.textContent = "Inequality 1: Click the correct region to shade.";
+                graphContainer.style.pointerEvents = 'auto';
+                stylePicker.classList.add('hidden');
+                currentStep = 'eq1_shade';
+            } else if (currentStep === 'eq2_style') {
+                userInput.eq2.style = style;
+                const { m, b } = getLineFromPoints(userInput.eq2.p1, userInput.eq2.p2);
+                let lineClass = 'student-line student-line-2';
+                if (style === 'dashed') lineClass += ' student-line-dashed';
+                drawFullLine(m, b, 'student-line-2', lineClass);
+
+                instructionText.textContent = "Inequality 2: Click the correct region to shade.";
+                graphContainer.style.pointerEvents = 'auto';
+                stylePicker.classList.add('hidden');
+                currentStep = 'eq2_shade';
+            }
+            solidBtn.classList.remove('style-btn-active');
+            dashedBtn.classList.remove('style-btn-active');
+        }
+
         function resetState() {
-            clickedPoints = [];
-            chosenLineStyle = null;
-            clickedShadeSide = null;
+            userInput = { eq1: {}, eq2: {} };
+            currentStep = 'eq1_p1';
             clearStudentDrawings();
             
-            graphContainer.style.pointerEvents = 'auto'; // Re-enable clicks
-            instructionText.textContent = '1. Click the y-intercept.';
+            graphContainer.style.pointerEvents = 'auto';
+            instructionText.textContent = 'Inequality 1: Click the y-intercept.';
             feedbackArea.innerHTML = '';
             
             checkBtn.classList.add('hidden');
@@ -496,68 +524,77 @@
         }
 
         function checkAnswer() {
-            const p1 = clickedPoints[0];
-            const p2 = clickedPoints[1];
-            const { m, b, isSolid } = currentEquation;
-
-            // Check 1: Is the y-intercept correct?
-            const isInterceptCorrect = (p1.x === 0 && p1.y === b);
+            const { eq1, eq2 } = currentSystem;
+            const { eq1: in1, eq2: in2 } = userInput;
             
-            // Check 2: Is the second point on the line?
-            // Use a small tolerance for floating point
-            const isSlopePointCorrect = Math.abs(p2.y - (m * p2.x + b)) < 0.001;
-            
-            // Check 3: Is the line style correct?
-            const isStyleCorrect = (chosenLineStyle === (isSolid ? 'solid' : 'dashed'));
+            // Check 1: Eq1 Line
+            const isEq1Intercept = (in1.p1.x === 0 && in1.p1.y === eq1.b);
+            const isEq1Slope = Math.abs(in1.p2.y - (eq1.m * in1.p2.x + eq1.b)) < 0.001;
+            // Check 2: Eq1 Style
+            const isEq1Style = (in1.style === (eq1.isSolid ? 'solid' : 'dashed'));
+            // Check 3: Eq1 Shade (using Above/Below logic)
+            const correctSide1 = eq1.shadeAbove ? 'above' : 'below';
+            const isEq1Shade = (in1.shadeSide === correctSide1);
 
-            // UPDATED: Check 4: Is the shading correct?
-            const correctSide = currentEquation.shadeAbove ? 'above' : 'below';
-            const isShadeCorrect = (clickedShadeSide === correctSide);
+            // Check 4: Eq2 Line
+            const isEq2Intercept = (in2.p1.x === 0 && in2.p1.y === eq2.b);
+            const isEq2Slope = Math.abs(in2.p2.y - (eq2.m * in2.p2.x + eq2.b)) < 0.001;
+            // Check 5: Eq2 Style
+            const isEq2Style = (in2.style === (eq2.isSolid ? 'solid' : 'dashed'));
+            // Check 6: Eq2 Shade (using Above/Below logic)
+            const correctSide2 = eq2.shadeAbove ? 'above' : 'below';
+            const isEq2Shade = (in2.shadeSide === correctSide2);
+
+            const isAllCorrect = isEq1Intercept && isEq1Slope && isEq1Style && isEq1Shade &&
+                               isEq2Intercept && isEq2Slope && isEq2Style && isEq2Shade;
 
             checkBtn.classList.add('hidden');
             resetBtn.classList.add('hidden');
 
-            if (isInterceptCorrect && isSlopePointCorrect && isStyleCorrect && isShadeCorrect) {
-                // ALL CORRECT
+            if (isAllCorrect) {
                 score++;
                 updateStatsDisplay();
                 feedbackArea.innerHTML = `<p class="correct-text">Correct! Great job!</p>`;
                 
                 // Draw correct answer
                 clearStudentDrawings();
-                let correctLineClass = isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
-                drawFullLine(m, b, 'answer-line', correctLineClass);
+                let cl1 = eq1.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                drawFullLine(eq1.m, eq1.b, 'answer-line-1', cl1);
+                drawShadeRegion(eq1.m, eq1.b, correctSide1, 'answer-shade-1', 'correct-shade-1');
                 
-                drawShadeRegion(m, b, correctSide, 'answer-shade', 'correct-shade');
+                let cl2 = eq2.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                drawFullLine(eq2.m, eq2.b, 'answer-line-2', cl2);
+                drawShadeRegion(eq2.m, eq2.b, correctSide2, 'answer-shade-2', 'correct-shade-2');
                 
                 nextBtn.classList.remove('hidden');
             } else {
-                // INCORRECT
                 lives--;
                 updateStatsDisplay();
                 let errorMsgs = [];
-                if (!isInterceptCorrect) errorMsgs.push("Your y-intercept is not in the correct spot.");
-                else if (!isSlopePointCorrect) errorMsgs.push("Your y-intercept is right, but your second point is off the line.");
-                
-                if (!isStyleCorrect) errorMsgs.push(`The line should be <strong>${isSolid ? 'solid' : 'dashed'}</strong>.`);
-                if (!isShadeCorrect) errorMsgs.push("You shaded the wrong region.");
+                if (!isEq1Intercept || !isEq1Slope) errorMsgs.push("Inequality 1's boundary line is incorrect.");
+                if (!isEq1Style) errorMsgs.push(`Inequality 1's line style is wrong.`);
+                if (!isEq1Shade) errorMsgs.push("Inequality 1's shading is wrong.");
+                if (!isEq2Intercept || !isEq2Slope) errorMsgs.push("Inequality 2's boundary line is incorrect.");
+                if (!isEq2Style) errorMsgs.push(`Inequality 2's line style is wrong.`);
+                if (!isEq2Shade) errorMsgs.push("Inequality 2's shading is wrong.");
                 
                 if (lives <= 0) {
-                    // GAME OVER
                     isGameOver = true;
                     feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
                     // Show the correct answer
                     clearStudentDrawings();
-                    let correctLineClass = isSolid ? 'correct-line' : 'correct-line correct-line-dashed'; 
-                    drawFullLine(m, b, 'answer-line', correctLineClass);
+                    let cl1 = eq1.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                    drawFullLine(eq1.m, eq1.b, 'answer-line-1', cl1);
+                    drawShadeRegion(eq1.m, eq1.b, correctSide1, 'answer-shade-1', 'correct-shade-1');
                     
-                    drawShadeRegion(m, b, correctSide, 'answer-shade', 'correct-shade');
+                    let cl2 = eq2.isSolid ? 'correct-line' : 'correct-line correct-line-dashed';
+                    drawFullLine(eq2.m, eq2.b, 'answer-line-2', cl2);
+                    drawShadeRegion(eq2.m, eq2.b, correctSide2, 'answer-shade-2', 'correct-shade-2');
                     restartBtn.classList.remove('hidden');
                 } else {
-                    // Try again
-                    feedbackArea.innerHTML = `<p class="incorrect-text">${errorMsgs.join(' ')} Try again!</p>`;
+                    feedbackArea.innerHTML = `<p class="incorrect-text">${errorMsgs.length > 0 ? errorMsgs[0] : 'Something is not correct.'} Try again!</p>`;
                     resetBtn.classList.remove('hidden');
-                    resetBtn.classList.add('col-span-2'); // Make reset button full width
+                    resetBtn.classList.add('col-span-2');
                 }
             }
         }
@@ -578,7 +615,7 @@
         checkBtn.addEventListener('click', checkAnswer);
         resetBtn.addEventListener('click', () => {
              resetState();
-             instructionText.textContent = '1. Click the y-intercept.';
+             instructionText.textContent = 'Inequality 1: Click the y-intercept.';
         });
         nextBtn.addEventListener('click', generateProblem);
         restartBtn.addEventListener('click', handleRestart);
