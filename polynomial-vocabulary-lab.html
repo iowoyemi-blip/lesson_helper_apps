@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polynomial Vocabulary Lab</title>
+  <style>
+    :root {
+      --bg-1: #f8f1e5;
+      --bg-2: #d8e9f2;
+      --bg-3: #f4d8c6;
+      --ink: #1d2a36;
+      --muted: #536273;
+      --card: #ffffffe0;
+      --line: #d8dde3;
+      --accent: #d95b2b;
+      --accent-2: #0f6f84;
+      --ok: #1c8b5c;
+      --bad: #b63f3f;
+      --shadow: 0 20px 46px rgba(22, 36, 53, 0.14);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 18%, #fff7d7 0%, transparent 34%),
+        radial-gradient(circle at 85% 85%, #d3f3ff 0%, transparent 32%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      padding: 18px;
+    }
+
+    .app {
+      width: min(1140px, 100%);
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid #ffffff;
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: rise-in 420ms ease;
+    }
+
+    @keyframes rise-in {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero {
+      padding: 22px;
+      background:
+        linear-gradient(140deg, #fff7ed, #f5fcff),
+        radial-gradient(circle at 85% 0%, #ffc9aa 0%, transparent 35%);
+      border-bottom: 1px solid #e8edf2;
+    }
+
+    .hero-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: end;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 68ch;
+      line-height: 1.45;
+      font-size: 0.98rem;
+    }
+
+    .settings {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .settings label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: grid;
+      gap: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+
+    select,
+    input,
+    button {
+      font: inherit;
+    }
+
+    select,
+    input[type="text"],
+    input[type="number"] {
+      border: 1px solid #c7d0d9;
+      border-radius: 10px;
+      padding: 9px 11px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 40px;
+      outline: none;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    select:focus,
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: var(--accent-2);
+      box-shadow: 0 0 0 3px #0f6f8426;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.04);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: var(--accent-2);
+      color: #fff;
+    }
+
+    .ghost {
+      background: #eef3f8;
+      color: #233447;
+    }
+
+    .stats {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      background: #ffffffd8;
+      border: 1px solid #e8edf2;
+      border-radius: 12px;
+      padding: 11px;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: #5f6d7e;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      margin-top: 4px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #112131;
+    }
+
+    .progress-wrap {
+      margin-top: 12px;
+      background: #ffffffdb;
+      border: 1px solid #e8edf2;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .progress-title {
+      font-size: 0.8rem;
+      color: #4f5f70;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .progress-track {
+      margin-top: 7px;
+      height: 10px;
+      background: #e5ebf1;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ef7c3f, #f0af33);
+      transition: width 260ms ease;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 0.95fr 1.2fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel {
+      border-radius: var(--radius);
+      border: 1px solid #ebeff3;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 1.08rem;
+      letter-spacing: 0.01em;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .panel-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .vocab-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .vocab-card {
+      border: 1px solid #e8edf2;
+      border-radius: 12px;
+      padding: 10px;
+      background: #fafcff;
+    }
+
+    .vocab-card h3 {
+      margin: 0 0 5px;
+      font-size: 0.95rem;
+      color: #153045;
+    }
+
+    .vocab-card p {
+      margin: 0;
+      color: #3f4d5d;
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      margin-top: 7px;
+      font-weight: 700;
+      color: #0f6f84;
+      min-height: 1.2em;
+    }
+
+    .checklist {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .check-item {
+      border: 1px solid #e4e9f0;
+      border-radius: 10px;
+      padding: 9px;
+      background: #fbfdff;
+      color: #324456;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.92rem;
+    }
+
+    .check-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      background: #d9e1eb;
+      color: #5b6a79;
+      font-weight: 800;
+      font-size: 0.8rem;
+      flex: 0 0 auto;
+    }
+
+    .check-item.done {
+      border-color: #bee6d1;
+      background: #effbf3;
+      color: #1e5f3f;
+    }
+
+    .check-item.done .check-badge {
+      background: #25a167;
+      color: #fff;
+    }
+
+    .poly-board {
+      background: linear-gradient(150deg, #fff, #f7fbff);
+      border: 1px solid #e5ebf1;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .poly-label {
+      color: #5f6e7d;
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .poly-value {
+      margin-top: 8px;
+      font-size: clamp(1.2rem, 3.6vw, 1.8rem);
+      font-weight: 800;
+      color: #13273a;
+      min-height: 1.25em;
+      word-break: break-word;
+    }
+
+    .step {
+      border: 1px solid #e8edf2;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfdff;
+      margin-top: 10px;
+    }
+
+    .step-title {
+      margin: 0;
+      font-size: 0.93rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4f5f70;
+      font-weight: 800;
+    }
+
+    .step-note {
+      margin: 6px 0 10px;
+      color: #4a5969;
+      font-size: 0.9rem;
+    }
+
+    .bank,
+    .answer-zone {
+      min-height: 52px;
+      border: 1px dashed #cfd7e0;
+      border-radius: 11px;
+      padding: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+    }
+
+    .chip {
+      background: #f2f7fb;
+      border: 1px solid #cfd8e2;
+      color: #193147;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip .sign {
+      color: #0f6f84;
+      font-weight: 800;
+    }
+
+    .chip[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .bank button {
+      border: none;
+      cursor: pointer;
+    }
+
+    .placeholder {
+      color: #8390a0;
+      font-size: 0.92rem;
+    }
+
+    .controls,
+    .small-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .feedback {
+      min-height: 1.3em;
+      margin-top: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .feedback.ok {
+      color: var(--ok);
+    }
+
+    .feedback.bad {
+      color: var(--bad);
+    }
+
+    .feedback.neutral {
+      color: #4d5d6f;
+    }
+
+    .spark {
+      animation: spark 420ms ease;
+    }
+
+    @keyframes spark {
+      0% {
+        transform: scale(1);
+      }
+      45% {
+        transform: scale(1.06);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .quiz-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .field label {
+      display: grid;
+      gap: 4px;
+      color: #506172;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+
+    .results {
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 7px;
+    }
+
+    .result-item {
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+      border: 1px solid #e4e9ef;
+      background: #fafcff;
+    }
+
+    .result-item.ok {
+      border-color: #b8e4cc;
+      background: #eefaf2;
+      color: #1f6745;
+    }
+
+    .result-item.bad {
+      border-color: #edc8c8;
+      background: #fff3f3;
+      color: #843535;
+    }
+
+    .coach {
+      margin-top: 10px;
+      border-radius: 12px;
+      border: 1px solid #e7ecf2;
+      background: #f8fbff;
+      padding: 12px;
+    }
+
+    .coach h3 {
+      margin: 0 0 8px;
+      font-size: 0.92rem;
+      color: #28445e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .coach p {
+      margin: 0;
+      color: #425467;
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      color: #607085;
+      font-size: 0.84rem;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .quiz-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div class="hero-row">
+        <div>
+          <h1>Polynomial Vocabulary Lab</h1>
+          <p class="subtitle">Practice the language of polynomials by sorting terms into standard form, then identifying leading coefficient, degree, and both classifications. Use hints and coach notes whenever you need support.</p>
+        </div>
+        <div class="settings">
+          <label>
+            Max Degree
+            <select id="maxDegreeSelect" aria-label="Maximum degree">
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6" selected>6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+          <label>
+            Max Terms
+            <select id="maxTermsSelect" aria-label="Maximum number of terms">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+          <button class="secondary" id="newRoundTop">New Challenge</button>
+        </div>
+      </div>
+
+      <div class="stats" aria-live="polite">
+        <div class="stat">
+          <div class="stat-label">Mastery Points</div>
+          <div class="stat-value" id="masteryPoints">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Current Streak</div>
+          <div class="stat-value" id="streakValue">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Best Streak</div>
+          <div class="stat-value" id="bestStreak">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Vocabulary Checks</div>
+          <div class="stat-value" id="attemptedValue">0</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-title" id="progressTitle">Mastery Goal: 20 points</div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Vocabulary Map</h2>
+          <div class="panel-note">Read, then test yourself in the challenge lab.</div>
+        </div>
+
+        <div class="vocab-grid">
+          <article class="vocab-card">
+            <h3>Standard Form</h3>
+            <p>Write terms from highest exponent down to lowest exponent.</p>
+            <p class="example" id="exampleStandard"></p>
+          </article>
+
+          <article class="vocab-card">
+            <h3>Leading Coefficient</h3>
+            <p>The coefficient of the first term after the polynomial is in standard form.</p>
+            <p class="example" id="exampleLeading"></p>
+          </article>
+
+          <article class="vocab-card">
+            <h3>Degree</h3>
+            <p>The greatest exponent on <em>x</em> in the polynomial.</p>
+            <p class="example" id="exampleDegree"></p>
+          </article>
+
+          <article class="vocab-card">
+            <h3>Classification by Degree</h3>
+            <p>Examples: constant, linear, quadratic, cubic, quartic, quintic, sextic.</p>
+            <p class="example" id="exampleDegreeClass"></p>
+          </article>
+
+          <article class="vocab-card">
+            <h3>Classification by Number of Terms</h3>
+            <p>1 term: monomial, 2 terms: binomial, 3 terms: trinomial, 4+ terms: polynomial.</p>
+            <p class="example" id="exampleTermClass"></p>
+          </article>
+        </div>
+
+        <ul class="checklist">
+          <li class="check-item" id="goalStandard">
+            <span class="check-badge">1</span>
+            Put this round in standard form.
+          </li>
+          <li class="check-item" id="goalVocab">
+            <span class="check-badge">2</span>
+            Answer all vocabulary fields correctly.
+          </li>
+        </ul>
+
+        <p class="footer-note">Tip: If your streak breaks, read the coach notes, then try a new challenge immediately.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Challenge Lab</h2>
+          <div class="panel-note" id="roundLabel">Round 1</div>
+        </div>
+
+        <div class="poly-board">
+          <div class="poly-label">Scrambled Polynomial</div>
+          <div class="poly-value" id="scrambledPolynomial"></div>
+        </div>
+
+        <section class="step">
+          <h3 class="step-title">Step 1: Build Standard Form</h3>
+          <p class="step-note">Click each term chip in descending exponent order.</p>
+
+          <div class="bank" id="termBank" aria-label="Term bank"></div>
+          <div class="small-controls">
+            <button class="ghost" id="undoOrder">Undo Last</button>
+            <button class="ghost" id="clearOrder">Clear</button>
+            <button class="primary" id="checkOrder">Check Standard Form</button>
+          </div>
+
+          <div class="answer-zone" id="answerZone" aria-label="Your ordered polynomial"></div>
+          <div class="feedback neutral" id="orderFeedback">Arrange the terms to begin.</div>
+        </section>
+
+        <section class="step">
+          <h3 class="step-title">Step 2: Name the Vocabulary</h3>
+          <p class="step-note">Use your standard form answer to complete all four fields.</p>
+
+          <div class="quiz-grid">
+            <div class="field">
+              <label for="leadingInput">Leading Coefficient
+                <input id="leadingInput" type="text" inputmode="decimal" placeholder="e.g., -3" />
+              </label>
+            </div>
+            <div class="field">
+              <label for="degreeInput">Degree
+                <input id="degreeInput" type="number" min="0" step="1" placeholder="e.g., 4" />
+              </label>
+            </div>
+            <div class="field">
+              <label for="degreeClassSelect">Classification by Degree
+                <select id="degreeClassSelect"></select>
+              </label>
+            </div>
+            <div class="field">
+              <label for="termClassSelect">Classification by Number of Terms
+                <select id="termClassSelect">
+                  <option value="">Choose</option>
+                  <option value="Monomial">Monomial (1 term)</option>
+                  <option value="Binomial">Binomial (2 terms)</option>
+                  <option value="Trinomial">Trinomial (3 terms)</option>
+                  <option value="Polynomial (4+ terms)">Polynomial (4+ terms)</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button class="primary" id="checkVocab">Check Vocabulary</button>
+            <button class="ghost" id="hintButton">Hint</button>
+            <button class="secondary" id="newRoundBottom">Next Challenge</button>
+          </div>
+
+          <div class="feedback neutral" id="hintOutput">Hint area: ask for one when needed.</div>
+          <ul class="results" id="resultList"></ul>
+        </section>
+
+        <section class="coach" aria-live="polite">
+          <h3>Coach Notes</h3>
+          <p id="coachText">Each check will generate a worked explanation here so students can self-correct.</p>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const masteryTarget = 20;
+
+      const refs = {
+        maxDegreeSelect: document.getElementById("maxDegreeSelect"),
+        maxTermsSelect: document.getElementById("maxTermsSelect"),
+        newRoundTop: document.getElementById("newRoundTop"),
+        newRoundBottom: document.getElementById("newRoundBottom"),
+        masteryPoints: document.getElementById("masteryPoints"),
+        streakValue: document.getElementById("streakValue"),
+        bestStreak: document.getElementById("bestStreak"),
+        attemptedValue: document.getElementById("attemptedValue"),
+        progressTitle: document.getElementById("progressTitle"),
+        progressBar: document.getElementById("progressBar"),
+        roundLabel: document.getElementById("roundLabel"),
+        scrambledPolynomial: document.getElementById("scrambledPolynomial"),
+        termBank: document.getElementById("termBank"),
+        answerZone: document.getElementById("answerZone"),
+        orderFeedback: document.getElementById("orderFeedback"),
+        undoOrder: document.getElementById("undoOrder"),
+        clearOrder: document.getElementById("clearOrder"),
+        checkOrder: document.getElementById("checkOrder"),
+        leadingInput: document.getElementById("leadingInput"),
+        degreeInput: document.getElementById("degreeInput"),
+        degreeClassSelect: document.getElementById("degreeClassSelect"),
+        termClassSelect: document.getElementById("termClassSelect"),
+        checkVocab: document.getElementById("checkVocab"),
+        hintButton: document.getElementById("hintButton"),
+        hintOutput: document.getElementById("hintOutput"),
+        resultList: document.getElementById("resultList"),
+        coachText: document.getElementById("coachText"),
+        goalStandard: document.getElementById("goalStandard"),
+        goalVocab: document.getElementById("goalVocab"),
+        exampleStandard: document.getElementById("exampleStandard"),
+        exampleLeading: document.getElementById("exampleLeading"),
+        exampleDegree: document.getElementById("exampleDegree"),
+        exampleDegreeClass: document.getElementById("exampleDegreeClass"),
+        exampleTermClass: document.getElementById("exampleTermClass")
+      };
+
+      const state = {
+        round: 0,
+        mastery: 0,
+        streak: 0,
+        best: 0,
+        attempted: 0,
+        maxDegree: Number(refs.maxDegreeSelect.value),
+        maxTerms: Number(refs.maxTermsSelect.value),
+        standardSolved: false,
+        vocabSolved: false,
+        current: null
+      };
+
+      function randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function shuffle(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function randomNonZeroInt(min, max) {
+        let n = 0;
+        while (n === 0) {
+          n = randInt(min, max);
+        }
+        return n;
+      }
+
+      function ordinal(n) {
+        const rem10 = n % 10;
+        const rem100 = n % 100;
+        if (rem10 === 1 && rem100 !== 11) return `${n}st`;
+        if (rem10 === 2 && rem100 !== 12) return `${n}nd`;
+        if (rem10 === 3 && rem100 !== 13) return `${n}rd`;
+        return `${n}th`;
+      }
+
+      function degreeLabel(degree) {
+        const names = {
+          0: "Constant",
+          1: "Linear",
+          2: "Quadratic",
+          3: "Cubic",
+          4: "Quartic",
+          5: "Quintic",
+          6: "Sextic",
+          7: "Septic",
+          8: "Octic"
+        };
+        if (Object.prototype.hasOwnProperty.call(names, degree)) {
+          return names[degree];
+        }
+        return `${ordinal(degree)}-degree polynomial`;
+      }
+
+      function termLabel(termCount) {
+        if (termCount === 1) return "Monomial";
+        if (termCount === 2) return "Binomial";
+        if (termCount === 3) return "Trinomial";
+        return "Polynomial (4+ terms)";
+      }
+
+      function formatAbsTerm(term) {
+        const absCoeff = Math.abs(term.coeff);
+        if (term.exp === 0) {
+          return String(absCoeff);
+        }
+
+        const coeffPart = absCoeff === 1 ? "" : String(absCoeff);
+        const variable = term.exp === 1 ? "x" : `x<sup>${term.exp}</sup>`;
+        return `${coeffPart}${variable}`;
+      }
+
+      function formatPolynomial(terms) {
+        return terms
+          .map((term, index) => {
+            const abs = formatAbsTerm(term);
+            if (index === 0) {
+              return term.coeff < 0 ? `-${abs}` : abs;
+            }
+            return term.coeff < 0 ? ` - ${abs}` : ` + ${abs}`;
+          })
+          .join("");
+      }
+
+      function buildDegreeChoices(maxDegree) {
+        const cap = Math.max(maxDegree, 8);
+        const options = ["<option value=\"\">Choose</option>"];
+        for (let d = 0; d <= cap; d += 1) {
+          const label = degreeLabel(d);
+          options.push(`<option value="${label}">${label}</option>`);
+        }
+        refs.degreeClassSelect.innerHTML = options.join("");
+      }
+
+      function generatePolynomial(maxDegree, maxTerms) {
+        const highestTermCount = Math.min(maxTerms, maxDegree + 1);
+        const termCount = randInt(1, Math.max(1, highestTermCount));
+
+        const exponentPool = Array.from({ length: maxDegree + 1 }, (_, i) => i);
+        const sampledExponents = shuffle(exponentPool).slice(0, termCount);
+
+        const terms = sampledExponents.map((exp, index) => ({
+          id: index + 1,
+          exp,
+          coeff: randomNonZeroInt(-9, 9)
+        }));
+
+        const sorted = [...terms].sort((a, b) => b.exp - a.exp);
+        let shuffled = shuffle(sorted);
+
+        if (sorted.length > 1) {
+          const sameOrder = shuffled.every((term, i) => term.id === sorted[i].id);
+          if (sameOrder) {
+            shuffled = [...shuffled.slice(1), shuffled[0]];
+          }
+        }
+
+        return {
+          sorted,
+          shuffled,
+          selected: [],
+          leadingCoeff: sorted[0].coeff,
+          degree: sorted[0].exp,
+          degreeClass: degreeLabel(sorted[0].exp),
+          termClass: termLabel(termCount),
+          termCount,
+          standardForm: formatPolynomial(sorted)
+        };
+      }
+
+      function getTermById(id) {
+        return state.current.sorted.find((term) => term.id === id);
+      }
+
+      function toggleSpark(element) {
+        element.classList.remove("spark");
+        window.requestAnimationFrame(() => element.classList.add("spark"));
+      }
+
+      function updateChecklist() {
+        refs.goalStandard.classList.toggle("done", state.standardSolved);
+        refs.goalVocab.classList.toggle("done", state.vocabSolved);
+      }
+
+      function updateStats() {
+        refs.masteryPoints.textContent = state.mastery;
+        refs.streakValue.textContent = state.streak;
+        refs.bestStreak.textContent = state.best;
+        refs.attemptedValue.textContent = state.attempted;
+
+        const pct = Math.min(100, Math.round((state.mastery / masteryTarget) * 100));
+        refs.progressBar.style.width = `${pct}%`;
+        refs.progressBar.parentElement.setAttribute("aria-valuenow", String(pct));
+        refs.progressTitle.textContent = `Mastery Goal: ${masteryTarget} points (${pct}%)`;
+      }
+
+      function updateExamples() {
+        const c = state.current;
+        refs.exampleStandard.innerHTML = `Example: ${c.standardForm}`;
+        refs.exampleLeading.textContent = `Leading coefficient = ${c.leadingCoeff}`;
+        refs.exampleDegree.textContent = `Greatest exponent = ${c.degree}`;
+        refs.exampleDegreeClass.textContent = `${c.degree} -> ${c.degreeClass}`;
+        refs.exampleTermClass.textContent = `${c.termCount} terms -> ${c.termClass}`;
+      }
+
+      function renderTermBank() {
+        refs.termBank.innerHTML = "";
+        const selectedSet = new Set(state.current.selected);
+
+        state.current.shuffled.forEach((term) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "chip";
+          button.dataset.termId = String(term.id);
+          const sign = term.coeff >= 0 ? "+" : "-";
+          button.innerHTML = `<span class=\"sign\">${sign}</span><span>${formatAbsTerm(term)}</span>`;
+
+          if (selectedSet.has(term.id)) {
+            button.disabled = true;
+          }
+
+          button.addEventListener("click", () => {
+            if (selectedSet.has(term.id)) return;
+            state.current.selected.push(term.id);
+            renderAnswerZone();
+            renderTermBank();
+          });
+
+          refs.termBank.appendChild(button);
+        });
+      }
+
+      function renderAnswerZone() {
+        refs.answerZone.innerHTML = "";
+        if (state.current.selected.length === 0) {
+          const placeholder = document.createElement("span");
+          placeholder.className = "placeholder";
+          placeholder.textContent = "Your ordered polynomial will appear here.";
+          refs.answerZone.appendChild(placeholder);
+          return;
+        }
+
+        const selectedTerms = state.current.selected.map(getTermById);
+        const expression = document.createElement("span");
+        expression.innerHTML = formatPolynomial(selectedTerms);
+        expression.style.fontWeight = "800";
+        expression.style.color = "#10283d";
+        expression.style.fontSize = "1.05rem";
+        refs.answerZone.appendChild(expression);
+      }
+
+      function orderHint() {
+        const expected = state.current.sorted;
+        const selected = state.current.selected;
+        if (selected.length === 0) {
+          return `Start with the term that has exponent ${expected[0].exp}.`;
+        }
+
+        const nextExpected = expected[selected.length];
+        if (!nextExpected) {
+          return "You selected all terms. Check whether they are in descending exponent order.";
+        }
+        return `Next should be the term with exponent ${nextExpected.exp}.`;
+      }
+
+      function setOrderFeedback(message, tone) {
+        refs.orderFeedback.textContent = message;
+        refs.orderFeedback.className = `feedback ${tone}`;
+      }
+
+      function checkOrder() {
+        const selectedIds = state.current.selected;
+        const expectedIds = state.current.sorted.map((term) => term.id);
+
+        if (selectedIds.length < expectedIds.length) {
+          setOrderFeedback(`Not finished yet. ${orderHint()}`, "neutral");
+          return;
+        }
+
+        const correct = expectedIds.every((id, index) => id === selectedIds[index]);
+        if (correct) {
+          setOrderFeedback("Standard form is correct.", "ok");
+          if (!state.standardSolved) {
+            state.standardSolved = true;
+            state.mastery += 1;
+            toggleSpark(refs.orderFeedback);
+          }
+          refs.coachText.innerHTML = `Great order: <strong>${state.current.standardForm}</strong>. The leading term is <strong>${formatAbsTerm(state.current.sorted[0])}</strong> with coefficient <strong>${state.current.leadingCoeff}</strong>.`;
+        } else {
+          setOrderFeedback(`Close. ${orderHint()}`, "bad");
+          refs.coachText.textContent = "Use descending exponents: biggest power first, then step down to smaller powers.";
+        }
+
+        updateChecklist();
+        updateStats();
+      }
+
+      function normalizeInputNumber(value) {
+        const trimmed = value.trim();
+        if (trimmed === "") return null;
+        const number = Number(trimmed);
+        return Number.isFinite(number) ? number : null;
+      }
+
+      function addResultItem(message, ok) {
+        const li = document.createElement("li");
+        li.className = `result-item ${ok ? "ok" : "bad"}`;
+        li.textContent = message;
+        refs.resultList.appendChild(li);
+      }
+
+      function checkVocabulary() {
+        state.attempted += 1;
+        refs.resultList.innerHTML = "";
+
+        const c = state.current;
+        const leadingValue = normalizeInputNumber(refs.leadingInput.value);
+        const degreeValue = normalizeInputNumber(refs.degreeInput.value);
+        const degreeClassValue = refs.degreeClassSelect.value;
+        const termClassValue = refs.termClassSelect.value;
+
+        const leadingOk = leadingValue === c.leadingCoeff;
+        const degreeOk = degreeValue === c.degree;
+        const degreeClassOk = degreeClassValue === c.degreeClass;
+        const termClassOk = termClassValue === c.termClass;
+
+        addResultItem(
+          leadingOk
+            ? `Leading coefficient is correct (${c.leadingCoeff}).`
+            : `Leading coefficient should be ${c.leadingCoeff}.`,
+          leadingOk
+        );
+
+        addResultItem(
+          degreeOk
+            ? `Degree is correct (${c.degree}).`
+            : `Degree should be ${c.degree}.`,
+          degreeOk
+        );
+
+        addResultItem(
+          degreeClassOk
+            ? `Degree classification is correct (${c.degreeClass}).`
+            : `Degree classification should be ${c.degreeClass}.`,
+          degreeClassOk
+        );
+
+        addResultItem(
+          termClassOk
+            ? `Term classification is correct (${c.termClass}).`
+            : `Term classification should be ${c.termClass}.`,
+          termClassOk
+        );
+
+        const allCorrect = leadingOk && degreeOk && degreeClassOk && termClassOk;
+
+        if (allCorrect) {
+          if (!state.vocabSolved) {
+            state.vocabSolved = true;
+            state.mastery += 2;
+            state.streak += 1;
+            state.best = Math.max(state.best, state.streak);
+          }
+
+          refs.coachText.innerHTML = `Strong work. In standard form, <strong>${c.standardForm}</strong> has leading coefficient <strong>${c.leadingCoeff}</strong>, degree <strong>${c.degree}</strong>, so it is <strong>${c.degreeClass}</strong> and a <strong>${c.termClass}</strong>.`;
+          refs.hintOutput.textContent = "All vocabulary fields are correct. Start the next challenge to keep your streak.";
+          refs.hintOutput.className = "feedback ok";
+          toggleSpark(refs.hintOutput);
+        } else {
+          if (!state.vocabSolved) {
+            state.streak = 0;
+          }
+          refs.hintOutput.textContent = "Revise using the results above, then check again.";
+          refs.hintOutput.className = "feedback bad";
+          refs.coachText.innerHTML = `Self-correction path: rewrite in standard form first (<strong>${c.standardForm}</strong>), then read off leading coefficient and degree before choosing the two classifications.`;
+        }
+
+        updateChecklist();
+        updateStats();
+      }
+
+      function getHints() {
+        const c = state.current;
+        const hints = [
+          `The highest exponent is ${c.degree}, so that term must go first in standard form.`,
+          `Your polynomial has ${c.termCount} term${c.termCount === 1 ? "" : "s"}.`,
+          `Leading coefficient means the number attached to the first term in standard form.`,
+          `Degree classification for degree ${c.degree} is ${c.degreeClass}.`,
+          `When you have 4 or more terms, the term classification is Polynomial (4+ terms).`
+        ];
+        return hints;
+      }
+
+      function showHint() {
+        const hints = getHints();
+        const hint = hints[randInt(0, hints.length - 1)];
+        refs.hintOutput.textContent = hint;
+        refs.hintOutput.className = "feedback neutral";
+      }
+
+      function clearInputsAndFeedback() {
+        refs.leadingInput.value = "";
+        refs.degreeInput.value = "";
+        refs.degreeClassSelect.value = "";
+        refs.termClassSelect.value = "";
+        refs.resultList.innerHTML = "";
+        refs.hintOutput.textContent = "Hint area: ask for one when needed.";
+        refs.hintOutput.className = "feedback neutral";
+        setOrderFeedback("Arrange the terms to begin.", "neutral");
+      }
+
+      function renderRound() {
+        refs.roundLabel.textContent = `Round ${state.round}`;
+        refs.scrambledPolynomial.innerHTML = state.current.shuffled.length
+          ? formatPolynomial(state.current.shuffled)
+          : "";
+        renderTermBank();
+        renderAnswerZone();
+        updateExamples();
+        updateChecklist();
+      }
+
+      function nextRound() {
+        state.round += 1;
+        state.maxDegree = Number(refs.maxDegreeSelect.value);
+        state.maxTerms = Number(refs.maxTermsSelect.value);
+        buildDegreeChoices(state.maxDegree);
+
+        state.current = generatePolynomial(state.maxDegree, state.maxTerms);
+        state.standardSolved = false;
+        state.vocabSolved = false;
+
+        clearInputsAndFeedback();
+        renderRound();
+        updateStats();
+        refs.coachText.textContent = "Each check will generate a worked explanation here so students can self-correct.";
+      }
+
+      refs.newRoundTop.addEventListener("click", nextRound);
+      refs.newRoundBottom.addEventListener("click", nextRound);
+
+      refs.maxDegreeSelect.addEventListener("change", () => {
+        buildDegreeChoices(Number(refs.maxDegreeSelect.value));
+        nextRound();
+      });
+
+      refs.maxTermsSelect.addEventListener("change", () => {
+        nextRound();
+      });
+
+      refs.undoOrder.addEventListener("click", () => {
+        state.current.selected.pop();
+        renderAnswerZone();
+        renderTermBank();
+      });
+
+      refs.clearOrder.addEventListener("click", () => {
+        state.current.selected = [];
+        renderAnswerZone();
+        renderTermBank();
+      });
+
+      refs.checkOrder.addEventListener("click", checkOrder);
+      refs.checkVocab.addEventListener("click", checkVocabulary);
+      refs.hintButton.addEventListener("click", showHint);
+
+      buildDegreeChoices(state.maxDegree);
+      nextRound();
+    })();
+  </script>
+</body>
+</html>
