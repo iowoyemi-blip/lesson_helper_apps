@@ -142,6 +142,13 @@
       transition: transform 120ms ease, filter 120ms ease;
     }
 
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      filter: none;
+    }
+
     button:hover {
       transform: translateY(-1px);
       filter: brightness(1.04);
@@ -149,6 +156,12 @@
 
     button:active {
       transform: translateY(0);
+    }
+
+    select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f3f6f9;
     }
 
     .primary {
@@ -935,6 +948,10 @@
         return state.current.sorted.find((term) => term.id === id);
       }
 
+      function isRoundComplete() {
+        return state.standardSolved && state.vocabSolved;
+      }
+
       function toggleSpark(element) {
         element.classList.remove("spark");
         window.requestAnimationFrame(() => element.classList.add("spark"));
@@ -943,6 +960,25 @@
       function updateChecklist() {
         refs.goalStandard.classList.toggle("done", state.standardSolved);
         refs.goalVocab.classList.toggle("done", state.vocabSolved);
+        updateRoundLock();
+      }
+
+      function updateRoundLock() {
+        const locked = !isRoundComplete();
+        refs.newRoundTop.disabled = locked;
+        refs.newRoundBottom.disabled = locked;
+        refs.maxDegreeSelect.disabled = locked;
+        refs.maxTermsSelect.disabled = locked;
+
+        refs.newRoundTop.textContent = locked ? "New Challenge (Locked)" : "New Challenge";
+        refs.newRoundBottom.textContent = locked ? "Next Challenge (Locked)" : "Next Challenge";
+
+        const lockMessage = locked
+          ? "Finish Step 1 and Step 2 to unlock."
+          : "Round complete. Start the next challenge.";
+        refs.newRoundTop.title = lockMessage;
+        refs.newRoundBottom.title = lockMessage;
+        refs.roundLabel.textContent = `Round ${state.round} • ${lockMessage}`;
       }
 
       function updateStats() {
@@ -1173,7 +1209,6 @@
       }
 
       function renderRound() {
-        refs.roundLabel.textContent = `Round ${state.round}`;
         refs.scrambledPolynomial.innerHTML = state.current.shuffled.length
           ? formatPolynomial(state.current.shuffled)
           : "";
@@ -1183,7 +1218,13 @@
         updateChecklist();
       }
 
-      function nextRound() {
+      function nextRound(force = false) {
+        if (!force && state.current && !isRoundComplete()) {
+          refs.hintOutput.textContent = "This challenge is locked. Complete both steps to unlock the next round.";
+          refs.hintOutput.className = "feedback bad";
+          return;
+        }
+
         state.round += 1;
         state.maxDegree = Number(refs.maxDegreeSelect.value);
         state.maxTerms = Number(refs.maxTermsSelect.value);
@@ -1228,7 +1269,7 @@
       refs.hintButton.addEventListener("click", showHint);
 
       buildDegreeChoices(state.maxDegree);
-      nextRound();
+      nextRound(true);
     })();
   </script>
 </body>
