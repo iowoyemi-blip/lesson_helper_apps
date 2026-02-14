@@ -611,7 +611,7 @@
 
       <div class="stats" aria-live="polite">
         <div class="stat">
-          <div class="stat-label">Mastery Points</div>
+          <div class="stat-label">Mastery Rounds</div>
           <div class="stat-value" id="masteryPoints">0</div>
         </div>
         <div class="stat">
@@ -629,7 +629,7 @@
       </div>
 
       <div class="progress-wrap">
-        <div class="progress-title" id="progressTitle">Mastery Goal: 20 points</div>
+        <div class="progress-title" id="progressTitle">Mastery Goal: 10 rounds (0%)</div>
         <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="progress-bar" id="progressBar"></div>
         </div>
@@ -768,7 +768,7 @@
 
   <script>
     (() => {
-      const masteryTarget = 20;
+      const masteryTarget = 10;
 
       const refs = {
         maxDegreeSelect: document.getElementById("maxDegreeSelect"),
@@ -817,6 +817,8 @@
         maxTerms: Number(refs.maxTermsSelect.value),
         standardSolved: false,
         vocabSolved: false,
+        roundCredited: false,
+        roundHadVocabMiss: false,
         current: null
       };
 
@@ -990,7 +992,23 @@
         const pct = Math.min(100, Math.round((state.mastery / masteryTarget) * 100));
         refs.progressBar.style.width = `${pct}%`;
         refs.progressBar.parentElement.setAttribute("aria-valuenow", String(pct));
-        refs.progressTitle.textContent = `Mastery Goal: ${masteryTarget} points (${pct}%)`;
+        refs.progressTitle.textContent = `Mastery Goal: ${masteryTarget} rounds (${pct}%)`;
+      }
+
+      function finalizeRoundMastery() {
+        if (state.roundCredited || !isRoundComplete()) {
+          return { finalized: false, awarded: false };
+        }
+
+        state.roundCredited = true;
+        if (!state.roundHadVocabMiss) {
+          state.mastery += 1;
+          state.streak += 1;
+          state.best = Math.max(state.best, state.streak);
+          return { finalized: true, awarded: true };
+        }
+        state.streak = 0;
+        return { finalized: true, awarded: false };
       }
 
       function updateExamples() {
@@ -1081,9 +1099,20 @@
           setOrderFeedback("Standard form is correct.", "ok");
           if (!state.standardSolved) {
             state.standardSolved = true;
-            state.mastery += 1;
             toggleSpark(refs.orderFeedback);
           }
+
+          const roundResult = finalizeRoundMastery();
+          if (roundResult.finalized) {
+            if (roundResult.awarded) {
+              refs.hintOutput.textContent = "Round complete. Mastery advanced by 1 round.";
+              refs.hintOutput.className = "feedback ok";
+            } else {
+              refs.hintOutput.textContent = "Round complete, but mastery did not advance because vocabulary was missed earlier this round.";
+              refs.hintOutput.className = "feedback neutral";
+            }
+          }
+
           refs.coachText.innerHTML = `Great order: <strong>${state.current.standardForm}</strong>. The leading term is <strong>${formatAbsTerm(state.current.sorted[0])}</strong> with coefficient <strong>${state.current.leadingCoeff}</strong>.`;
         } else {
           setOrderFeedback(`Close. ${orderHint()}`, "bad");
@@ -1156,20 +1185,29 @@
         if (allCorrect) {
           if (!state.vocabSolved) {
             state.vocabSolved = true;
-            state.mastery += 2;
-            state.streak += 1;
-            state.best = Math.max(state.best, state.streak);
           }
 
+          const roundResult = finalizeRoundMastery();
           refs.coachText.innerHTML = `Strong work. In standard form, <strong>${c.standardForm}</strong> has leading coefficient <strong>${c.leadingCoeff}</strong>, degree <strong>${c.degree}</strong>, so it is <strong>${c.degreeClass}</strong> and a <strong>${c.termClass}</strong>.`;
-          refs.hintOutput.textContent = "All vocabulary fields are correct. Start the next challenge to keep your streak.";
-          refs.hintOutput.className = "feedback ok";
+          if (roundResult.finalized) {
+            if (roundResult.awarded) {
+              refs.hintOutput.textContent = "Round complete. Mastery advanced by 1 round.";
+              refs.hintOutput.className = "feedback ok";
+            } else {
+              refs.hintOutput.textContent = "Round complete, but mastery did not advance because vocabulary was missed earlier this round.";
+              refs.hintOutput.className = "feedback neutral";
+            }
+          } else {
+            refs.hintOutput.textContent = "All vocabulary fields are correct. Finish Step 1 to complete the round.";
+            refs.hintOutput.className = "feedback ok";
+          }
           toggleSpark(refs.hintOutput);
         } else {
           if (!state.vocabSolved) {
+            state.roundHadVocabMiss = true;
             state.streak = 0;
           }
-          refs.hintOutput.textContent = "Revise using the results above, then check again.";
+          refs.hintOutput.textContent = "Revise using the results above, then check again. This round will not earn mastery credit after a vocabulary miss.";
           refs.hintOutput.className = "feedback bad";
           refs.coachText.innerHTML = `Self-correction path: rewrite in standard form first (<strong>${c.standardForm}</strong>), then read off leading coefficient and degree before choosing the two classifications.`;
         }
@@ -1233,6 +1271,8 @@
         state.current = generatePolynomial(state.maxDegree, state.maxTerms);
         state.standardSolved = false;
         state.vocabSolved = false;
+        state.roundCredited = false;
+        state.roundHadVocabMiss = false;
 
         clearInputsAndFeedback();
         renderRound();
