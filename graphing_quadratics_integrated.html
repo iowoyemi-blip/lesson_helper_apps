@@ -130,10 +130,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">Vertex (x, y)</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="prop-vertex-x" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="x (or full point)">
-                                    <input type="text" id="prop-vertex-y" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="y">
-                                </div>
+                                <input type="text" id="prop-vertex" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (2, -4)">
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">Axis of Symmetry</label>
@@ -145,7 +142,7 @@
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">y-intercept</label>
-                                <input type="text" id="prop-y-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="y or (0, y)">
+                                <input type="text" id="prop-y-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (0, 8)">
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">x-intercepts</label>
@@ -423,11 +420,10 @@
                 .toLowerCase()
                 .replace(/^[xy]=/, '')       // Strip "x=" or "y="
                 .replace(/^y(?=[<>])/, '')   // Strip "y" only if part of an inequality
-                .replace(/[()]/g, '')        // Strip parentheses
-                .replace(/^0,/, '');         // Normalize y-intercepts ("0,40" -> "40")
+                .replace(/[()]/g, '');       // Strip parentheses
         }
 
-        function normalizeXInts(str) {
+        function normalizeCoordinates(str) {
             let cleanStr = (str || '').replace(/\s/g, '').toLowerCase();
             // Convert any square/curly brackets to parentheses just in case
             cleanStr = cleanStr.replace(/[\{\[]/g, '(').replace(/[\}\]]/g, ')');
@@ -438,8 +434,8 @@
             
             // Extract all coordinate pairs
             while ((match = pointRegex.exec(cleanStr)) !== null) {
-                let xVal = parseFloat(match[1].replace(/x=/g, ''));
-                let yVal = parseFloat(match[2].replace(/y=/g, ''));
+                let xVal = parseFloat(match[1].replace(/[xy]=/g, ''));
+                let yVal = parseFloat(match[2].replace(/[xy]=/g, ''));
                 if (!isNaN(xVal) && !isNaN(yVal)) {
                     points.push({ x: xVal, y: yVal });
                 }
@@ -447,7 +443,7 @@
             
             // If they didn't format as points, return their raw input so it fails (enforces coordinate format)
             if (points.length === 0) {
-                return cleanStr.replace(/x=/g, '');
+                return cleanStr.replace(/[xy]=/g, '');
             }
             
             // Sort points by x-value and reconstruct standard string for comparison
@@ -499,20 +495,11 @@
             // 3. Check Properties
             let isPropertiesCorrect = true;
             
-            const checkProp = (el, correctVal) => {
-                let userVal = normalizeInput(el.value);
-                
-                if (el.id === 'prop-x-int') {
-                    const userClean = normalizeXInts(el.value);
-                    const correctClean = normalizeXInts(correctVal);
-                    if (userClean !== correctClean) {
-                        el.classList.add('incorrect-answer');
-                        isPropertiesCorrect = false;
-                    } else {
-                        el.classList.add('correct-answer');
-                        el.classList.remove('incorrect-answer');
-                    }
-                } else if (userVal !== normalizeInput(correctVal.toString())) {
+            const checkProp = (el, correctVal, isCoord = false) => {
+                let userVal = isCoord ? normalizeCoordinates(el.value) : normalizeInput(el.value);
+                let targetVal = isCoord ? normalizeCoordinates(correctVal) : normalizeInput(correctVal.toString());
+
+                if (userVal !== targetVal) {
                     el.classList.add('incorrect-answer');
                     isPropertiesCorrect = false;
                 } else {
@@ -521,26 +508,11 @@
                 }
             };
 
-            // Custom Vertex Checking (handles if they put the full coord in the first box)
-            let vxVal = document.getElementById('prop-vertex-x').value;
-            let vyVal = document.getElementById('prop-vertex-y').value;
-            const userVertex = vyVal.trim() === '' ? vxVal : `(${vxVal},${vyVal})`;
-            
-            if (normalizeInput(userVertex) !== normalizeInput(`(${vertex.x},${vertex.y})`)) {
-                document.getElementById('prop-vertex-x').classList.add('incorrect-answer');
-                document.getElementById('prop-vertex-y').classList.add('incorrect-answer');
-                isPropertiesCorrect = false;
-            } else {
-                document.getElementById('prop-vertex-x').classList.add('correct-answer');
-                document.getElementById('prop-vertex-y').classList.add('correct-answer');
-                document.getElementById('prop-vertex-x').classList.remove('incorrect-answer');
-                document.getElementById('prop-vertex-y').classList.remove('incorrect-answer');
-            }
-
+            checkProp(document.getElementById('prop-vertex'), `(${vertex.x}, ${vertex.y})`, true);
             checkProp(document.getElementById('prop-aos'), aos);
             checkProp(document.getElementById('prop-minmax'), minMax);
-            checkProp(document.getElementById('prop-y-int'), yInt);
-            checkProp(document.getElementById('prop-x-int'), xInt);
+            checkProp(document.getElementById('prop-y-int'), `(0, ${yInt})`, true);
+            checkProp(document.getElementById('prop-x-int'), xInt, true);
             checkProp(document.getElementById('prop-concavity'), concavity);
             checkProp(document.getElementById('prop-range'), range);
 
