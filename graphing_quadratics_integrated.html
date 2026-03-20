@@ -149,7 +149,7 @@
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">x-intercepts</label>
-                                <input type="text" id="prop-x-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. -2, 6">
+                                <input type="text" id="prop-x-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (-2, 0), (6, 0)">
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-sm font-semibold text-gray-600 mb-1">Range</label>
@@ -302,7 +302,7 @@
             let c = a * h * h + k; // y-intercept
             
             let xInts = [r1, r2];
-            let xIntStr = xInts.sort((a,b) => a-b).join(', ');
+            let xIntStr = xInts.sort((a,b) => a-b).map(x => `(${x}, 0)`).join(', ');
 
             // Calculate table points centered around vertex
             let tablePoints = [];
@@ -428,13 +428,32 @@
         }
 
         function normalizeXInts(str) {
-            return (str || '')
-                .toLowerCase()
-                .replace(/[\s{}]/g, '')      // remove spaces and curly brackets
-                .replace(/x=/g, '')          // remove 'x='
-                .split(',')
-                .filter(val => val !== '')
-                .sort((a, b) => parseFloat(a) - parseFloat(b)) // strictly sort numerically
+            let cleanStr = (str || '').replace(/\s/g, '').toLowerCase();
+            // Convert any square/curly brackets to parentheses just in case
+            cleanStr = cleanStr.replace(/[\{\[]/g, '(').replace(/[\}\]]/g, ')');
+            
+            const pointRegex = /\(([^,]+),([^)]+)\)/g;
+            let match;
+            let points = [];
+            
+            // Extract all coordinate pairs
+            while ((match = pointRegex.exec(cleanStr)) !== null) {
+                let xVal = parseFloat(match[1].replace(/x=/g, ''));
+                let yVal = parseFloat(match[2].replace(/y=/g, ''));
+                if (!isNaN(xVal) && !isNaN(yVal)) {
+                    points.push({ x: xVal, y: yVal });
+                }
+            }
+            
+            // If they didn't format as points, return their raw input so it fails (enforces coordinate format)
+            if (points.length === 0) {
+                return cleanStr.replace(/x=/g, '');
+            }
+            
+            // Sort points by x-value and reconstruct standard string for comparison
+            return points
+                .sort((a, b) => a.x - b.x)
+                .map(p => `(${p.x},${p.y})`)
                 .join(',');
         }
 
