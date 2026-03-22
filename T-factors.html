@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factor Flow: The T-Chart Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .t-line { border-right: 4px solid #1e293b; }
+        .t-header { border-bottom: 4px solid #1e293b; }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .correct-input { 
+            background-color: #dcfce7 !important; 
+            border-color: #22c55e !important; 
+            color: #166534; 
+        }
+        
+        .error-shake { animation: shake 0.4s; border-color: #ef4444 !important; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        input:disabled:not(.correct-input) {
+            background-color: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="max-w-xl w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-slate-200">
+        <h1 class="text-4xl font-800 text-slate-900 mb-4">Factor Flow 🌊</h1>
+        <div class="bg-blue-50 p-4 rounded-2xl mb-6 text-left">
+            <h2 class="font-bold text-blue-800 mb-2 text-lg">Mastering the T-Chart</h2>
+            <p class="text-slate-600 text-sm mb-4">Finding factors is the key to solving trinomials! Practice finding all pairs systematically.</p>
+            <ul class="text-slate-600 text-sm space-y-2 list-disc ml-4">
+                <li>Fill in the <strong>T-Chart</strong> starting from 1.</li>
+                <li>Rows unlock only after the previous pair is correct.</li>
+                <li>The box turns <span class="text-green-600 font-bold">green</span> as soon as you find the right pair!</li>
+            </ul>
+        </div>
+        
+        <div class="space-y-4 mb-8">
+            <label class="block text-sm font-semibold text-slate-700">Choose Session Length:</label>
+            <div class="flex justify-center gap-3">
+                <button onclick="setTimer(5)" class="time-btn px-6 py-2 rounded-full border-2 border-slate-200 hover:border-blue-500 hover:text-blue-600 transition-all font-semibold">5 Mins</button>
+                <button onclick="setTimer(10)" class="time-btn px-6 py-2 rounded-full border-2 border-slate-200 hover:border-blue-500 hover:text-blue-600 transition-all font-semibold">10 Mins</button>
+                <button onclick="setTimer(15)" class="time-btn px-6 py-2 rounded-full border-2 border-slate-200 hover:border-blue-500 hover:text-blue-600 transition-all font-semibold">15 Mins</button>
+            </div>
+        </div>
+
+        <button id="start-btn" disabled onclick="beginGame()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl opacity-50 cursor-not-allowed transition-all hover:bg-blue-700 shadow-lg">
+            Select Time to Start
+        </button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="hidden max-w-lg w-full">
+        <div class="flex justify-between items-center mb-6 px-2">
+            <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+                <span class="text-slate-500 text-xs uppercase font-bold block text-center">Timer</span>
+                <span id="display-timer" class="text-xl font-bold text-slate-800 tabular-nums">00:00</span>
+            </div>
+            <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-right">
+                <span class="text-slate-500 text-xs uppercase font-bold block text-center">Score</span>
+                <span id="display-score" class="text-xl font-bold text-slate-800">0</span>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-2xl p-8 border border-slate-200 flex flex-col items-center min-h-[500px]">
+            <h2 class="text-slate-400 font-semibold uppercase tracking-widest text-xs mb-2">Current Target Number</h2>
+            <div id="target-number" class="text-7xl font-800 text-slate-900 mb-8">--</div>
+
+            <div id="t-chart" class="w-full max-w-xs mb-8 overflow-y-auto max-h-[350px] pr-2">
+                <div class="flex t-header pb-2 px-4 italic text-slate-400 text-xs">
+                    <div class="flex-1 text-center font-bold">Small Factor</div>
+                    <div class="flex-1 text-center font-bold">Large Factor</div>
+                </div>
+                <div id="rows-container" class="mt-4 space-y-3">
+                    <!-- Rows generated here -->
+                </div>
+            </div>
+
+            <!-- NEXT BUTTON -->
+            <div id="next-action-area" class="hidden w-full mt-auto pt-4 border-t border-slate-100 animate-in fade-in zoom-in duration-300">
+                <div class="p-3 bg-blue-50 rounded-xl mb-4 text-center">
+                    <p class="text-blue-800 font-medium text-xs leading-tight">Notice how the factors on the left get larger while the right side gets smaller until they meet!</p>
+                </div>
+                <button onclick="loadNextProblem()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-xl transition-all transform active:scale-95">
+                    Next Challenge →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY SCREEN -->
+    <div id="summary-screen" class="hidden max-w-xl w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-slate-200">
+        <h2 class="text-3xl font-800 text-slate-900 mb-2">Practice Done! 🏁</h2>
+        <p class="text-slate-500 mb-8">Excellent effort on your factoring skills.</p>
+        
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-green-50 p-6 rounded-2xl">
+                <span class="block text-green-600 font-bold text-4xl" id="final-score">0</span>
+                <span class="text-green-800 text-sm font-semibold uppercase">Solved</span>
+            </div>
+            <div class="bg-rose-50 p-6 rounded-2xl">
+                <span class="block text-rose-600 font-bold text-4xl" id="total-errors">0</span>
+                <span class="text-rose-800 text-sm font-semibold uppercase">Mistakes</span>
+            </div>
+        </div>
+
+        <div id="struggle-section" class="text-left mb-8 hidden">
+            <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span>⚠️</span> Numbers to Review:
+            </h3>
+            <div id="struggle-list" class="flex flex-wrap gap-2"></div>
+            <p class="text-xs text-slate-400 mt-3 italic">These numbers had 2+ errors. Focus on their divisibility rules next time!</p>
+        </div>
+
+        <button onclick="location.reload()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-colors shadow-lg">
+            Restart Practice
+        </button>
+    </div>
+
+    <script>
+        let timeLeft = 0;
+        let timerInterval;
+        let score = 0;
+        let totalMistakes = 0;
+        let problemsSolvedCount = 0;
+        
+        let currentTarget = 0;
+        let currentPairs = [];
+        let solvedRowsCount = 0;
+        let struggleLog = {};
+
+        // 4-60 non-perfect squares (Common)
+        const commonPool = [
+            6, 8, 10, 12, 14, 15, 18, 20, 21, 22, 24, 26, 27, 28, 
+            30, 32, 34, 35, 38, 39, 40, 42, 44, 45, 48, 50, 52, 54, 56, 60
+        ];
+
+        // 60+ and some tricky perfect squares (Occasional)
+        const challengePool = [
+            16, 25, 36, 49, 63, 64, 70, 72, 75, 80, 81, 84, 90, 96, 100
+        ];
+
+        function setTimer(mins) {
+            timeLeft = mins * 60;
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-50', 'border-blue-500', 'text-blue-600');
+            });
+            event.target.classList.add('bg-blue-50', 'border-blue-500', 'text-blue-600');
+            
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = false;
+            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            startBtn.innerText = `Start ${mins} Minute Challenge`;
+        }
+
+        function beginGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+
+            loadNextProblem();
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            document.getElementById('display-timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function loadNextProblem() {
+            document.getElementById('next-action-area').classList.add('hidden');
+            
+            // Selection logic:
+            // First 3 problems are always from commonPool (non-perfect squares 4-60)
+            // After that, 75% chance for common, 25% for challenge.
+            if (problemsSolvedCount < 3) {
+                currentTarget = commonPool[Math.floor(Math.random() * commonPool.length)];
+            } else {
+                const roll = Math.random();
+                if (roll < 0.75) {
+                    currentTarget = commonPool[Math.floor(Math.random() * commonPool.length)];
+                } else {
+                    currentTarget = challengePool[Math.floor(Math.random() * challengePool.length)];
+                }
+            }
+            
+            document.getElementById('target-number').innerText = currentTarget;
+            
+            currentPairs = [];
+            for (let i = 1; i <= Math.sqrt(currentTarget); i++) {
+                if (currentTarget % i === 0) {
+                    currentPairs.push({ a: i, b: currentTarget / i });
+                }
+            }
+            
+            solvedRowsCount = 0;
+            renderTChart();
+        }
+
+        function renderTChart() {
+            const container = document.getElementById('rows-container');
+            container.innerHTML = '';
+            
+            currentPairs.forEach((pair, idx) => {
+                const row = document.createElement('div');
+                row.className = "flex gap-4 items-center";
+                
+                row.innerHTML = `
+                    <div class="flex-1 t-line pr-4">
+                        <input type="number" id="L-${idx}" 
+                            class="w-full text-center text-xl font-bold p-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-400 outline-none transition-all"
+                            placeholder="?"
+                            oninput="validate(${idx})"
+                            ${idx === 0 ? '' : 'disabled'}>
+                    </div>
+                    <div class="flex-1 pl-2">
+                        <input type="number" id="R-${idx}" 
+                            class="w-full text-center text-xl font-bold p-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-400 outline-none transition-all"
+                            placeholder="?"
+                            oninput="validate(${idx})"
+                            ${idx === 0 ? '' : 'disabled'}>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+            
+            document.getElementById('L-0').focus();
+        }
+
+        function validate(idx) {
+            const lInput = document.getElementById(`L-${idx}`);
+            const rInput = document.getElementById(`R-${idx}`);
+            const valL = parseInt(lInput.value);
+            const valR = parseInt(rInput.value);
+            
+            const correctPair = currentPairs[idx];
+
+            // Immediate Feedback Logic
+            if (valL === correctPair.a && valR === correctPair.b) {
+                lInput.classList.add('correct-input');
+                rInput.classList.add('correct-input');
+                lInput.disabled = true;
+                rInput.disabled = true;
+                solvedRowsCount++;
+                
+                if (solvedRowsCount === currentPairs.length) {
+                    score++;
+                    problemsSolvedCount++;
+                    document.getElementById('display-score').innerText = score;
+                    document.getElementById('next-action-area').classList.remove('hidden');
+                } else {
+                    // Unlock next row
+                    const nextL = document.getElementById(`L-${idx + 1}`);
+                    const nextR = document.getElementById(`R-${idx + 1}`);
+                    nextL.disabled = false;
+                    nextR.disabled = false;
+                    nextL.focus();
+                }
+            }
+        }
+
+        // Logic for tracking mistakes on "Enter" or final check
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const active = document.activeElement;
+                if (active && active.tagName === 'INPUT' && !active.disabled) {
+                    const idx = parseInt(active.id.split('-')[1]);
+                    const lInput = document.getElementById(`L-${idx}`);
+                    const rInput = document.getElementById(`R-${idx}`);
+                    const valL = parseInt(lInput.value);
+                    const valR = parseInt(rInput.value);
+                    const correctPair = currentPairs[idx];
+
+                    if (valL !== correctPair.a || valR !== correctPair.b) {
+                        totalMistakes++;
+                        struggleLog[currentTarget] = (struggleLog[currentTarget] || 0) + 1;
+                        lInput.classList.add('error-shake');
+                        rInput.classList.add('error-shake');
+                        setTimeout(() => {
+                            lInput.classList.remove('error-shake');
+                            rInput.classList.remove('error-shake');
+                        }, 400);
+                    }
+                }
+            }
+        });
+
+        function endGame() {
+            clearInterval(timerInterval);
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('summary-screen').classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('total-errors').innerText = totalMistakes;
+            
+            const struggleList = document.getElementById('struggle-list');
+            const struggleSection = document.getElementById('struggle-section');
+            struggleList.innerHTML = '';
+            
+            let hasStruggles = false;
+            for (let num in struggleLog) {
+                if (struggleLog[num] >= 2) {
+                    hasStruggles = true;
+                    const chip = document.createElement('span');
+                    chip.className = "px-4 py-2 bg-rose-100 text-rose-700 font-bold rounded-full border border-rose-200 text-sm";
+                    chip.innerText = num;
+                    struggleList.appendChild(chip);
+                }
+            }
+            if (hasStruggles) struggleSection.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
