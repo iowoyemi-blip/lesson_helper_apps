@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trinomial Box Factory - Timed Practice</title>
+    <title>Trinomial Box Factory - Easy & Hard Modes</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -48,7 +48,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Box Grid Styling */
         .box-grid {
             display: grid;
             grid-template-columns: auto 1fr 1fr;
@@ -68,7 +67,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
         // --- MATH UTILITIES ---
         const cleanInput = (str) => str.replace(/\s/g, '').toLowerCase();
@@ -90,6 +89,7 @@
                     let clean = s.replace(/\s/g, '')
                                  .replace(/\^/g, '**')
                                  .replace(/([0-9])x/g, '$1*x')
+                                 .replace(/x\(/g, 'x*(')
                                  .replace(/\)\(/g, ')*(')
                                  .replace(/(\d)\(/g, '$1*(')
                                  .replace(/x/g, `(${x})`);
@@ -139,9 +139,10 @@
         };
 
         const App = () => {
-            const [gameState, setGameState] = useState('start'); // 'start', 'playing', 'finished'
-            const [timeLimit, setTimeLimit] = useState(5); // in minutes
-            const [timeLeft, setTimeLeft] = useState(0); // in seconds
+            const [gameState, setGameState] = useState('start'); 
+            const [timeLimit, setTimeLimit] = useState(5); 
+            const [difficulty, setDifficulty] = useState('easy'); 
+            const [timeLeft, setTimeLeft] = useState(0); 
             const [score, setScore] = useState(0);
             
             // Problem Data
@@ -149,6 +150,9 @@
             const [step, setStep] = useState(1);
             
             // Inputs
+            const [inputGcf, setInputGcf] = useState('');
+            const [inputBase, setInputBase] = useState('');
+
             const [inputAC, setInputAC] = useState('');
             const [inputMagic1, setInputMagic1] = useState('');
             const [inputMagic2, setInputMagic2] = useState('');
@@ -169,15 +173,23 @@
             // Timer Logic
             useEffect(() => {
                 let timer;
-                if (gameState === 'playing' && timeLeft > 0) {
-                    timer = setInterval(() => {
-                        setTimeLeft((prev) => prev - 1);
-                    }, 1000);
-                } else if (gameState === 'playing' && timeLeft === 0) {
-                    setGameState('finished');
+                if (gameState === 'playing') {
+                    if (timeLimit === 'none') {
+                        // Count up for unlimited time
+                        timer = setInterval(() => {
+                            setTimeLeft((prev) => prev + 1);
+                        }, 1000);
+                    } else if (timeLeft > 0) {
+                        // Count down for set time limits
+                        timer = setInterval(() => {
+                            setTimeLeft((prev) => prev - 1);
+                        }, 1000);
+                    } else if (timeLeft === 0) {
+                        setGameState('finished');
+                    }
                 }
                 return () => clearInterval(timer);
-            }, [gameState, timeLeft]);
+            }, [gameState, timeLeft, timeLimit]);
 
             const formatTime = (seconds) => {
                 const m = Math.floor(seconds / 60);
@@ -187,32 +199,94 @@
 
             // --- GENERATOR ---
             const generateProblem = () => {
-                // Hard Mode Enforced: a > 1
-                let p = Math.floor(Math.random() * 4) + 1; // 1 to 4
-                let r = Math.floor(Math.random() * 3) + 2; // 2 to 4
-                let q = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
-                let s = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
-
-                const a = p * r;
-                const b = (p * s) + (r * q);
-                const c = q * s;
+                let p, q, r, s, a, b, c;
+                let isValid = false;
                 
-                const ac = a * c;
-                const magic1 = p * s; 
-                const magic2 = r * q;
+                while(!isValid) {
+                    p = Math.floor(Math.random() * 4) + 1; 
+                    r = Math.floor(Math.random() * 3) + 2; 
+                    q = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    s = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    
+                    a = p * r;
+                    b = (p * s) + (r * q);
+                    c = q * s;
 
-                const displayStr = `${a === 1 ? '' : a}x^2 ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)}x ${c >= 0 ? '+ ' + c : '- ' + Math.abs(c)}`;
+                    const getGcd = (x, y) => {
+                        x = Math.abs(x); y = Math.abs(y);
+                        while(y) { var t = y; y = x % y; x = t; }
+                        return x;
+                    };
+                    
+                    let gcdAll = getGcd(a, getGcd(b, c));
+                    if (gcdAll === 1 && a > 1) {
+                        isValid = true;
+                    }
+                }
+
+                let gcfInt = 1;
+                let gcfVarPow = 0; 
+                
+                if (difficulty === 'hard') {
+                    let rand = Math.random();
+                    if (rand < 0.33) {
+                        gcfInt = Math.floor(Math.random() * 4) + 2; 
+                    } else if (rand < 0.66) {
+                        gcfVarPow = Math.floor(Math.random() * 2) + 1; 
+                    } else {
+                        gcfInt = Math.floor(Math.random() * 4) + 2; 
+                        gcfVarPow = Math.floor(Math.random() * 2) + 1;
+                    }
+                }
+
+                let a_orig = a * gcfInt;
+                let b_orig = b * gcfInt;
+                let c_orig = c * gcfInt;
+
+                const makeTerm = (coeff, pow) => {
+                    if (coeff === 0) return "";
+                    let str = "";
+                    if (coeff === 1 && pow !== 0) str = "";
+                    else if (coeff === -1 && pow !== 0) str = "-";
+                    else str = coeff.toString();
+                    
+                    if (pow === 1) str += "x";
+                    else if (pow > 1) str += "x^" + pow;
+                    return str;
+                };
+
+                let term1 = makeTerm(a_orig, 2 + gcfVarPow);
+                let term2 = makeTerm(b_orig, 1 + gcfVarPow);
+                let term3 = makeTerm(c_orig, gcfVarPow);
+
+                let displayStr = term1;
+                if (b_orig > 0) displayStr += " + " + term2;
+                else if (b_orig < 0) displayStr += " - " + term2.replace("-", "");
+                
+                if (c_orig > 0) displayStr += " + " + term3;
+                else if (c_orig < 0) displayStr += " - " + term3.replace("-", "");
+
+                let gcfStr = "";
+                if (gcfInt > 1) gcfStr += gcfInt;
+                if (gcfVarPow === 1) gcfStr += "x";
+                if (gcfVarPow === 2) gcfStr += "x^2";
+                if (gcfStr === "") gcfStr = "1";
+
+                const baseTrinomialStr = `${a === 1 ? '' : a}x^2 ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)}x ${c >= 0 ? '+ ' + c : '- ' + Math.abs(c)}`;
+
+                const hasGcf = gcfStr !== "1";
 
                 setTrinomial({ 
-                    a, b, c, ac, 
-                    displayStr,
-                    magic1, magic2,
+                    a, b, c, ac: a*c, 
+                    displayStr, baseTrinomialStr,
+                    gcfStr, hasGcf,
+                    magic1: p*s, magic2: r*q,
                     factors: { p, q, r, s } 
                 });
                 
-                setStep(1);
+                setStep(hasGcf ? 0 : 1); 
                 
-                // Reset Inputs
+                setInputGcf(''); setInputBase('');
                 setInputAC(''); setInputMagic1(''); setInputMagic2('');
                 setBoxTL(''); setBoxTR(''); setBoxBL(''); setBoxBR('');
                 setOutTop1(''); setOutTop2(''); setOutLeft1(''); setOutLeft2('');
@@ -222,22 +296,45 @@
 
             const startGame = () => {
                 setScore(0);
-                setTimeLeft(timeLimit * 60);
+                if (timeLimit === 'none') {
+                    setTimeLeft(0);
+                } else {
+                    setTimeLeft(timeLimit * 60);
+                }
                 setGameState('playing');
                 generateProblem();
             };
 
             // --- HANDLERS ---
+            const checkPhase0 = () => {
+                if (!inputGcf || !inputBase) {
+                    setFeedback({ status: 'error', message: "Fill in both the GCF and the remaining trinomial." });
+                    return;
+                }
+
+                if (!checkEq(inputGcf, trinomial.gcfStr)) {
+                    setFeedback({ status: 'error', message: "Check your GCF again. Look for common numbers and variables." });
+                    return;
+                }
+                
+                if (!checkEq(inputBase, trinomial.baseTrinomialStr)) {
+                    setFeedback({ status: 'error', message: "The GCF is correct, but check the remaining trinomial inside the parentheses." });
+                    return;
+                }
+
+                setFeedback({ status: 'success', message: "Excellent! Now factor the remaining trinomial." });
+                setTimeout(() => setStep(1), 1500);
+            };
+
             const checkPhase1 = () => {
                 const userAC = parseInt(inputAC);
                 const m1 = parseInt(inputMagic1);
                 const m2 = parseInt(inputMagic2);
 
                 if (userAC !== trinomial.ac) {
-                    setFeedback({ status: 'error', message: `Check a · c. (${trinomial.a} · ${trinomial.c})` });
+                    setFeedback({ status: 'error', message: `Check a · c of the base trinomial. (${trinomial.a} · ${trinomial.c})` });
                     return;
                 }
-                
                 if (m1 * m2 !== trinomial.ac) {
                     setFeedback({ status: 'error', message: "Your numbers don't multiply to a·c!" });
                     return;
@@ -254,55 +351,36 @@
             const checkPhase2 = () => {
                 const inputs = [boxTL, boxTR, boxBL, boxBR];
                 const termA = `${trinomial.a}x^2`;
-                const hasA = inputs.some(i => checkEq(i, termA));
                 const termC = `${trinomial.c}`;
-                const hasC = inputs.some(i => checkEq(i, termC));
                 const termM1 = `${trinomial.magic1}x`;
                 const termM2 = `${trinomial.magic2}x`;
                 
+                if (!inputs.some(i => checkEq(i, termA))) { setFeedback({ status: 'error', message: `Missing the first term (${termA})!` }); return; }
+                if (!inputs.some(i => checkEq(i, termC))) { setFeedback({ status: 'error', message: `Missing the last term (${termC})!` }); return; }
+                
                 let matchesM1 = inputs.filter(i => checkEq(i, termM1)).length;
                 let matchesM2 = inputs.filter(i => checkEq(i, termM2)).length;
-                
                 const validXTerms = (trinomial.magic1 === trinomial.magic2) ? matchesM1 >= 2 : (matchesM1 >= 1 && matchesM2 >= 1);
 
-                if (!hasA) {
-                    setFeedback({ status: 'error', message: `You are missing the first term (${termA})!` });
-                    return;
-                }
-                if (!hasC) {
-                    setFeedback({ status: 'error', message: `You are missing the last term (${termC})!` });
-                    return;
-                }
                 if (!validXTerms) {
                     setFeedback({ status: 'error', message: "Check your split x-terms (from Step 1)." });
                     return;
                 }
 
-                if (!checkEq(boxTL, termA)) {
-                    setFeedback({ status: 'info', message: "Standard form: Put the squared term in the top-left." });
-                    return;
-                }
-                 if (!checkEq(boxBR, termC)) {
-                    setFeedback({ status: 'info', message: "Standard form: Put the constant in the bottom-right." });
-                    return;
-                }
+                if (!checkEq(boxTL, termA)) { setFeedback({ status: 'info', message: "Standard form: Put the squared term in the top-left." }); return; }
+                if (!checkEq(boxBR, termC)) { setFeedback({ status: 'info', message: "Standard form: Put the constant in the bottom-right." }); return; }
 
                 setFeedback({ status: 'success', message: "Box loaded! Now extract the GCFs." });
                 setTimeout(() => setStep(3), 1500);
             };
 
             const checkPhase3 = () => {
-                const t1 = outTop1 || "1";
-                const t2 = outTop2 || "1";
-                const l1 = outLeft1 || "1";
-                const l2 = outLeft2 || "1";
+                const t1 = outTop1 || "1"; const t2 = outTop2 || "1";
+                const l1 = outLeft1 || "1"; const l2 = outLeft2 || "1";
 
-                const validCell = (f1, f2, boxVal) => {
-                    const product = `(${f1}) * (${f2})`;
-                    return checkEq(product, boxVal);
-                };
+                const validCell = (f1, f2, boxVal) => checkEq(`(${f1}) * (${f2})`, boxVal);
 
-                if (!validCell(t1, l1, boxTL)) { setFeedback({ status: 'error', message: "Top-Left GCFs don't multiply to the cell inside." }); return; }
+                if (!validCell(t1, l1, boxTL)) { setFeedback({ status: 'error', message: "Top-Left check failed. GCFs don't multiply correctly." }); return; }
                 if (!validCell(t2, l1, boxTR)) { setFeedback({ status: 'error', message: "Top-Right check failed. Check the GCFs." }); return; }
                 if (!validCell(t1, l2, boxBL)) { setFeedback({ status: 'error', message: "Bottom-Left check failed. Check the GCFs." }); return; }
                 if (!validCell(t2, l2, boxBR)) { setFeedback({ status: 'error', message: "Bottom-Right check failed." }); return; }
@@ -313,16 +391,16 @@
             
             const checkPhase4 = () => {
                 if (!inputFinal.includes('(') || !inputFinal.includes(')')) {
-                     setFeedback({ status: 'error', message: "Please use parentheses for your factors. e.g. (x+2)(x-3)" });
+                     setFeedback({ status: 'error', message: "Please use parentheses for your factors." });
                      return;
                 }
                 
                 if (checkEq(inputFinal, trinomial.displayStr)) {
-                     setScore(s => s + 1); // Exact count of fully completed problems
+                     setScore(s => s + 1);
                      setFeedback({ status: 'success', message: "Great Job! Factory Work Complete." });
                      setTimeout(generateProblem, 2500);
                 } else {
-                     setFeedback({ status: 'error', message: "That doesn't match the original expression. Check your factors." });
+                     setFeedback({ status: 'error', message: "That doesn't match the original expression. Did you forget your GCF?" });
                 }
             };
 
@@ -336,14 +414,23 @@
                             <p className="text-slate-500 mb-6">Master the Box Method for factoring with a > 1.</p>
                             
                             <div className="mb-6">
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Focus Session (Minutes)</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Difficulty</label>
                                 <div className="flex gap-2">
-                                    {[5, 10, 15].map(time => (
-                                        <button 
-                                            key={time}
-                                            onClick={() => setTimeLimit(time)} 
-                                            className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${timeLimit === time ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
-                                            {time}
+                                    <button onClick={() => setDifficulty('easy')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'easy' ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                        Easy<br/><span className="text-xs font-normal">No GCF</span>
+                                    </button>
+                                    <button onClick={() => setDifficulty('hard')} className={`flex-1 px-4 py-3 rounded-lg font-bold transition-all ${difficulty === 'hard' ? 'bg-orange-100 text-orange-700 border-2 border-orange-500' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                        Hard<br/><span className="text-xs font-normal">Includes GCF</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Focus Session</label>
+                                <div className="flex gap-2">
+                                    {[5, 10, 15, 'none'].map(time => (
+                                        <button key={time} onClick={() => setTimeLimit(time)} className={`flex-1 px-2 py-3 rounded-lg font-bold transition-all ${timeLimit === time ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-500 border-2 border-slate-200'}`}>
+                                            {time === 'none' ? 'No Limit' : `${time} min`}
                                         </button>
                                     ))}
                                 </div>
@@ -359,8 +446,12 @@
                     <div className="min-h-screen flex items-center justify-center p-4">
                         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-green-600 pop">
                             <div className="text-6xl mb-4">🏆</div>
-                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Time's Up!</h1>
-                            <p className="text-slate-500 mb-2">You completed a {timeLimit}-minute focus session.</p>
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">Practice Complete!</h1>
+                            <p className="text-slate-500 mb-2">
+                                {timeLimit === 'none' 
+                                    ? `You completed an untimed session in ${formatTime(timeLeft)}.` 
+                                    : `You completed a ${timeLimit}-minute focus session.`}
+                            </p>
                             <div className="text-5xl font-black text-indigo-600 my-6">
                                 {score} {score === 1 ? 'Problem' : 'Problems'} Completed
                             </div>
@@ -370,14 +461,22 @@
                 );
             }
 
+            const currentProgressStep = trinomial?.hasGcf ? step + 1 : step;
+            const totalProgressSteps = trinomial?.hasGcf ? 5 : 4;
+
             return (
                 <div className="min-h-screen max-w-2xl mx-auto p-4 flex flex-col">
                     <div className="flex justify-between items-end mb-4">
-                        <h1 className="text-2xl font-bold text-slate-700">Trinomial Box Factory</h1>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-700">Trinomial Box Factory</h1>
+                            <button onClick={() => setGameState('finished')} className="text-sm font-bold text-slate-400 hover:text-red-500 transition-colors mt-1">
+                                <i className="fas fa-stop-circle mr-1"></i> End Practice
+                            </button>
+                        </div>
                         <div className="flex gap-4">
                             <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center min-w-[80px]">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
-                                <span className={`text-2xl font-black ${timeLeft < 60 ? 'text-red-500 pop' : 'text-slate-700'}`}>{formatTime(timeLeft)}</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{timeLimit === 'none' ? 'Elapsed' : 'Time'}</span>
+                                <span className={`text-2xl font-black ${timeLimit !== 'none' && timeLeft < 60 ? 'text-red-500 pop' : 'text-slate-700'}`}>{formatTime(timeLeft)}</span>
                             </div>
                             <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center min-w-[80px]">
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed</span>
@@ -388,81 +487,78 @@
                     
                     {trinomial && (
                         <div className="bg-white rounded-2xl shadow-lg border-b-4 border-slate-200 overflow-hidden">
-                            {/* Problem Display */}
-                            <div className="bg-slate-800 p-8 text-center text-white">
-                                <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Factor the Trinomial</div>
+                            <div className="bg-slate-800 p-8 text-center text-white relative">
+                                {difficulty === 'hard' && <div className="absolute top-4 left-4 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">Hard Mode</div>}
+                                <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Factor the Expression</div>
                                 <div className="text-4xl font-bold math-font tracking-wider">
                                     {formatMath(trinomial.displayStr)}
                                 </div>
                             </div>
 
                             <div className="p-6">
-                                <ProgressBar currentStep={step} totalSteps={4} />
+                                <ProgressBar currentStep={currentProgressStep} totalSteps={totalProgressSteps} />
 
-                                {/* PHASE 1: DIAMOND */}
-                                <div className={`transition-all duration-500 ${step > 1 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                                    <div className="flex items-center mb-4">
-                                        <div className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">1</div>
-                                        <div>
-                                            <h3 className="font-bold text-slate-700">The Split</h3>
-                                            <p className="text-xs text-slate-500">Find factors of a·c that add to b</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex flex-col items-center bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 relative">
-                                        {/* X Graphic */}
-                                        <div className="relative w-48 h-48">
-                                            {/* Lines */}
-                                            <div className="absolute top-0 left-0 w-full h-full">
-                                                <svg viewBox="0 0 100 100" className="w-full h-full stroke-slate-300 stroke-[2]">
-                                                    <line x1="0" y1="0" x2="100" y2="100" />
-                                                    <line x1="100" y1="0" x2="0" y2="100" />
-                                                </svg>
-                                            </div>
-                                            
-                                            {/* Inputs/Displays */}
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20">
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full bg-white border-2 border-slate-300 focus:border-indigo-500 rounded-lg p-2 text-center font-bold" 
-                                                    placeholder="a·c"
-                                                    value={inputAC}
-                                                    onChange={e => setInputAC(e.target.value)}
-                                                    readOnly={step > 1}
-                                                />
-                                            </div>
-                                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-20 bg-slate-200 rounded-lg p-2 text-center font-bold text-slate-600">
-                                                {trinomial.b}
-                                            </div>
-                                            <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16">
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" 
-                                                    placeholder="#"
-                                                    value={inputMagic1}
-                                                    onChange={e => setInputMagic1(e.target.value)}
-                                                    readOnly={step > 1}
-                                                />
-                                            </div>
-                                            <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-16">
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" 
-                                                    placeholder="#"
-                                                    value={inputMagic2}
-                                                    onChange={e => setInputMagic2(e.target.value)}
-                                                    readOnly={step > 1}
-                                                />
+                                {/* PHASE 0: GCF (Hard Mode Only) */}
+                                {trinomial.hasGcf && (
+                                    <div className={`transition-all duration-500 mb-8 pb-8 border-b-2 border-slate-100 ${step > 0 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                        <div className="flex items-center mb-4">
+                                            <div className="bg-orange-100 text-orange-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">0</div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-700">Extract the GCF</h3>
+                                                <p className="text-xs text-slate-500">Find the greatest common factor and the remaining trinomial</p>
                                             </div>
                                         </div>
                                         
-                                        {step === 1 && (
-                                            <button onClick={checkPhase1} className="mt-8 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">
-                                                Check Split
-                                            </button>
+                                        <div className="flex flex-col md:flex-row items-center justify-center gap-2 text-xl font-bold text-slate-700 bg-orange-50 p-6 rounded-xl border border-orange-200">
+                                            <input type="text" className="bg-white border-2 border-orange-200 focus:border-orange-500 rounded-lg px-4 py-2 w-24 text-center font-bold math-font" placeholder="GCF" value={inputGcf} onChange={e => setInputGcf(e.target.value)} readOnly={step > 0} />
+                                            <span>(</span>
+                                            <input type="text" className="bg-white border-2 border-orange-200 focus:border-orange-500 rounded-lg px-4 py-2 w-64 text-center font-bold math-font" placeholder="ax² + bx + c" value={inputBase} onChange={e => setInputBase(e.target.value)} readOnly={step > 0} />
+                                            <span>)</span>
+                                        </div>
+                                        
+                                        {step === 0 && (
+                                            <div className="flex justify-center mt-6">
+                                                <button onClick={checkPhase0} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Verify GCF</button>
+                                            </div>
                                         )}
                                     </div>
-                                </div>
+                                )}
+
+                                {/* PHASE 1: DIAMOND */}
+                                {step >= 1 && (
+                                    <div className={`fade-in transition-all duration-500 ${step > 1 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                        <div className="flex items-center mb-4">
+                                            <div className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">1</div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-700">The Split</h3>
+                                                <p className="text-xs text-slate-500">Find factors of {trinomial.hasGcf ? 'base ' : ''}a·c that add to {trinomial.hasGcf ? 'base ' : ''}b</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex flex-col items-center bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 relative">
+                                            <div className="relative w-48 h-48">
+                                                <div className="absolute top-0 left-0 w-full h-full">
+                                                    <svg viewBox="0 0 100 100" className="w-full h-full stroke-slate-300 stroke-[2]">
+                                                        <line x1="0" y1="0" x2="100" y2="100" /><line x1="100" y1="0" x2="0" y2="100" />
+                                                    </svg>
+                                                </div>
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20">
+                                                    <input type="number" className="w-full bg-white border-2 border-slate-300 focus:border-indigo-500 rounded-lg p-2 text-center font-bold" placeholder="a·c" value={inputAC} onChange={e => setInputAC(e.target.value)} readOnly={step > 1} />
+                                                </div>
+                                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-20 bg-slate-200 rounded-lg p-2 text-center font-bold text-slate-600">
+                                                    {trinomial.b}
+                                                </div>
+                                                <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16">
+                                                    <input type="number" className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" placeholder="#" value={inputMagic1} onChange={e => setInputMagic1(e.target.value)} readOnly={step > 1} />
+                                                </div>
+                                                <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-16">
+                                                    <input type="number" className="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded-lg p-2 text-center font-bold text-indigo-600" placeholder="#" value={inputMagic2} onChange={e => setInputMagic2(e.target.value)} readOnly={step > 1} />
+                                                </div>
+                                            </div>
+                                            {step === 1 && <button onClick={checkPhase1} className="mt-8 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">Check Split</button>}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* PHASE 2 & 3: THE BOX */}
                                 {step >= 2 && (
@@ -476,98 +572,25 @@
                                         </div>
 
                                         <div className="flex justify-center mb-6">
-                                            {/* CSS Grid for the Box + Outside inputs */}
                                             <div className="box-grid">
-                                                {/* Top-Left Empty Corner */}
                                                 <div></div>
+                                                <div className="w-20">{(step >= 3) && <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop1} onChange={e => setOutTop1(e.target.value)} readOnly={step > 3} />}</div>
+                                                <div className="w-20">{(step >= 3) && <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop2} onChange={e => setOutTop2(e.target.value)} readOnly={step > 3} />}</div>
+                                                <div className="h-20 flex items-center justify-end pr-2">{(step >= 3) && <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft1} onChange={e => setOutLeft1(e.target.value)} readOnly={step > 3} />}</div>
                                                 
-                                                {/* Top Inputs (Cols) */}
-                                                <div className="w-20">
-                                                    {(step >= 3) && (
-                                                        <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop1} onChange={e => setOutTop1(e.target.value)} readOnly={step > 3} />
-                                                    )}
-                                                </div>
-                                                <div className="w-20">
-                                                    {(step >= 3) && (
-                                                        <input type="text" className="w-full mb-2 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outTop2} onChange={e => setOutTop2(e.target.value)} readOnly={step > 3} />
-                                                    )}
-                                                </div>
-
-                                                {/* Left Input 1 (Row 1) */}
-                                                <div className="h-20 flex items-center justify-end pr-2">
-                                                    {(step >= 3) && (
-                                                        <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft1} onChange={e => setOutLeft1(e.target.value)} readOnly={step > 3} />
-                                                    )}
-                                                </div>
-
-                                                {/* Box Cell TL */}
-                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 rounded-tl-xl flex items-center justify-center p-1">
-                                                    <input 
-                                                        type="text" 
-                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
-                                                        placeholder="ax²"
-                                                        value={boxTL}
-                                                        onChange={e => setBoxTL(e.target.value)}
-                                                        readOnly={step > 2}
-                                                    />
-                                                </div>
-
-                                                {/* Box Cell TR */}
-                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-l-0 rounded-tr-xl flex items-center justify-center p-1">
-                                                    <input 
-                                                        type="text" 
-                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
-                                                        placeholder="x-term"
-                                                        value={boxTR}
-                                                        onChange={e => setBoxTR(e.target.value)}
-                                                        readOnly={step > 2}
-                                                    />
-                                                </div>
-
-                                                {/* Left Input 2 (Row 2) */}
-                                                <div className="h-20 flex items-center justify-end pr-2">
-                                                    {(step >= 3) && (
-                                                        <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft2} onChange={e => setOutLeft2(e.target.value)} readOnly={step > 3} />
-                                                    )}
-                                                </div>
-
-                                                {/* Box Cell BL */}
-                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 rounded-bl-xl flex items-center justify-center p-1">
-                                                    <input 
-                                                        type="text" 
-                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
-                                                        placeholder="x-term"
-                                                        value={boxBL}
-                                                        onChange={e => setBoxBL(e.target.value)}
-                                                        readOnly={step > 2}
-                                                    />
-                                                </div>
-
-                                                {/* Box Cell BR */}
-                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 border-l-0 rounded-br-xl flex items-center justify-center p-1">
-                                                    <input 
-                                                        type="text" 
-                                                        className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent"
-                                                        placeholder="c"
-                                                        value={boxBR}
-                                                        onChange={e => setBoxBR(e.target.value)}
-                                                        readOnly={step > 2}
-                                                    />
-                                                </div>
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 rounded-tl-xl flex items-center justify-center p-1"><input type="text" className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent" placeholder="ax²" value={boxTL} onChange={e => setBoxTL(e.target.value)} readOnly={step > 2} /></div>
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-l-0 rounded-tr-xl flex items-center justify-center p-1"><input type="text" className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent" placeholder="x-term" value={boxTR} onChange={e => setBoxTR(e.target.value)} readOnly={step > 2} /></div>
+                                                
+                                                <div className="h-20 flex items-center justify-end pr-2">{(step >= 3) && <input type="text" className="w-16 bg-purple-50 border-2 border-purple-200 focus:border-purple-500 rounded p-2 text-center font-bold math-font fade-in" placeholder="..." value={outLeft2} onChange={e => setOutLeft2(e.target.value)} readOnly={step > 3} />}</div>
+                                                
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 rounded-bl-xl flex items-center justify-center p-1"><input type="text" className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent" placeholder="x-term" value={boxBL} onChange={e => setBoxBL(e.target.value)} readOnly={step > 2} /></div>
+                                                <div className="w-24 h-24 bg-white border-2 border-slate-300 border-t-0 border-l-0 rounded-br-xl flex items-center justify-center p-1"><input type="text" className="w-full h-full text-center font-bold math-font text-xl outline-none bg-transparent" placeholder="c" value={boxBR} onChange={e => setBoxBR(e.target.value)} readOnly={step > 2} /></div>
                                             </div>
                                         </div>
 
                                         <div className="flex justify-center">
-                                            {step === 2 && (
-                                                <button onClick={checkPhase2} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
-                                                    Check Box
-                                                </button>
-                                            )}
-                                            {step === 3 && (
-                                                <button onClick={checkPhase3} className="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
-                                                    Verify Factors
-                                                </button>
-                                            )}
+                                            {step === 2 && <button onClick={checkPhase2} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Check Box</button>}
+                                            {step === 3 && <button onClick={checkPhase3} className="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Verify Factors</button>}
                                         </div>
                                     </div>
                                 )}
@@ -577,23 +600,18 @@
                                     <div className="fade-in border-t-2 border-slate-100 pt-6 mt-6">
                                         <div className="flex items-center mb-4">
                                             <div className="bg-green-100 text-green-700 w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3">4</div>
-                                            <h3 className="font-bold text-slate-700">Final Answer</h3>
+                                            <div>
+                                                <h3 className="font-bold text-slate-700">Final Answer</h3>
+                                                {trinomial.hasGcf && <p className="text-xs text-orange-600 font-bold">Remember to include your GCF at the front!</p>}
+                                            </div>
                                         </div>
                                         <div className="flex flex-col md:flex-row items-center justify-center gap-2 text-xl font-bold text-slate-700">
                                             <span>{formatMath(trinomial.displayStr)}</span>
                                             <span>=</span>
-                                            <input 
-                                                type="text" 
-                                                className="bg-green-50 border-2 border-green-200 focus:border-green-500 rounded-lg px-4 py-2 w-64 text-center font-bold math-font"
-                                                placeholder="(...)(...)"
-                                                value={inputFinal}
-                                                onChange={e => setInputFinal(e.target.value)}
-                                            />
+                                            <input type="text" className="bg-green-50 border-2 border-green-200 focus:border-green-500 rounded-lg px-4 py-2 w-64 text-center font-bold math-font" placeholder={trinomial.hasGcf ? "GCF(...)(...)" : "(...)(...)"} value={inputFinal} onChange={e => setInputFinal(e.target.value)} />
                                         </div>
                                         <div className="flex justify-center mt-4">
-                                            <button onClick={checkPhase4} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
-                                                Complete
-                                            </button>
+                                            <button onClick={checkPhase4} className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">Complete</button>
                                         </div>
                                     </div>
                                 )}
