@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphing Quadratics (Chunked Practice)</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .correct-text { color: #166534; }
+        .incorrect-text { color: #991b1b; }
+        
+        /* Highlight for the current step's active inputs */
+        .active-input {
+            border: 2px solid #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+            background-color: #ffffff !important;
+        }
+
+        /* Answer states (placed after active-input to override the blue glow when checked) */
+        .correct-answer { 
+            border: 2px solid #22c55e !important; 
+            background-color: #f0fdf4 !important; 
+            box-shadow: none !important;
+        }
+        .incorrect-answer { 
+            border: 2px solid #ef4444 !important; 
+            background-color: #fef2f2 !important; 
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+        }
+        
+        .graph-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border: 2px solid #cbd5e1;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem;
+            cursor: default; /* Changed to default unless active */
+        }
+        
+        .graph-active {
+            cursor: crosshair;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .graph-container svg {
+            width: 100%;
+            height: 100%;
+            border-radius: 0.5rem;
+        }
+
+        input:disabled, select:disabled {
+            background-color: #e2e8f0 !important;
+            color: #64748b !important;
+            border-color: #cbd5e1 !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex justify-center items-start min-h-screen">
+
+    <main class="bg-white rounded-2xl shadow-xl w-full max-w-6xl overflow-hidden">
+        <!-- Header & Stats -->
+        <div class="bg-gray-800 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold">Graphing Quadratics</h1>
+            <div class="flex gap-6 text-lg font-semibold">
+                <div id="scoreDisplay" class="bg-gray-700 px-4 py-2 rounded-lg">Score: 0</div>
+                <div id="livesDisplay" class="bg-gray-700 px-4 py-2 rounded-lg text-red-400">Lives: ❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            
+            <!-- Mode Selector -->
+            <div class="mb-6 flex flex-col sm:flex-row justify-center items-center gap-4 bg-gray-100 p-4 rounded-xl border border-gray-200 shadow-sm">
+                <label for="modeSelect" class="font-bold text-gray-700 text-lg">Choose Practice Mode:</label>
+                <select id="modeSelect" class="p-2 border-2 border-blue-300 rounded-lg font-semibold bg-white text-blue-900 shadow-sm outline-none focus:border-blue-500 cursor-pointer text-base sm:text-lg">
+                    <option value="standard">Standard Form: y = ax² + bx + c</option>
+                    <option value="factored">Factored Form: y = a(x - r₁)(x - r₂)</option>
+                    <option value="vertex">Vertex Form: y = a(x - h)² + k</option>
+                    <option value="random">Surprise Me! (Mixed Forms)</option>
+                </select>
+            </div>
+
+            <!-- Problem Display -->
+            <div class="mb-8 text-center bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+                <h2 class="text-gray-600 font-semibold mb-2 uppercase tracking-wide">Graph the Equation:</h2>
+                <div id="problem-display" class="text-4xl font-bold text-blue-900 font-serif"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                <!-- Left Column: Graph -->
+                <div class="flex flex-col items-center">
+                    <div id="svgGrid" class="graph-container">
+                        <!-- viewBox maps to x: -10 to 10, y: 10 to -10 (because SVG y goes down) -->
+                        <svg id="graph-svg" viewBox="-10 -10 20 20" preserveAspectRatio="xMidYMid meet"></svg>
+                    </div>
+                </div>
+
+                <!-- Right Column: Table & Properties -->
+                <div class="flex flex-col space-y-8">
+                    
+                    <!-- Table of Values -->
+                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">Table of Values</h3>
+                        <table class="w-full max-w-xs mx-auto text-center border-collapse bg-white rounded-lg shadow-sm overflow-hidden">
+                            <thead>
+                                <tr class="bg-gray-200 text-gray-700">
+                                    <th class="p-3 border-b-2 border-gray-300 w-1/2">x</th>
+                                    <th class="p-3 border-b-2 border-gray-300 w-1/2">y</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 5 rows for table -->
+                                <tr>
+                                    <td class="p-2 border-b"><input type="number" id="table-x-0" class="w-full p-2 border rounded text-center font-mono x-input"></td>
+                                    <td class="p-2 border-b"><input type="number" id="table-y-0" class="w-full p-2 border rounded text-center font-mono y-input"></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-2 border-b"><input type="number" id="table-x-1" class="w-full p-2 border rounded text-center font-mono x-input"></td>
+                                    <td class="p-2 border-b"><input type="number" id="table-y-1" class="w-full p-2 border rounded text-center font-mono y-input"></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-2 border-b bg-blue-50"><input type="number" id="table-x-2" class="w-full p-2 border rounded text-center font-mono x-input font-bold text-blue-900" placeholder="Vertex x"></td>
+                                    <td class="p-2 border-b bg-blue-50"><input type="number" id="table-y-2" class="w-full p-2 border rounded text-center font-mono y-input font-bold text-blue-900" placeholder="Vertex y"></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-2 border-b"><input type="number" id="table-x-3" class="w-full p-2 border rounded text-center font-mono x-input"></td>
+                                    <td class="p-2 border-b"><input type="number" id="table-y-3" class="w-full p-2 border rounded text-center font-mono y-input"></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-2 border-b"><input type="number" id="table-x-4" class="w-full p-2 border rounded text-center font-mono x-input"></td>
+                                    <td class="p-2 border-b"><input type="number" id="table-y-4" class="w-full p-2 border rounded text-center font-mono y-input"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Properties -->
+                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">Properties</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">Vertex (x, y)</label>
+                                <input type="text" id="prop-vertex" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (2, -4)">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">Axis of Symmetry</label>
+                                <input type="text" id="prop-aos" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="x = ?">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">Extremum (Min/Max val)</label>
+                                <input type="text" id="prop-minmax" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="Value">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">y-intercept</label>
+                                <input type="text" id="prop-y-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (0, 8)">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">x-intercepts</label>
+                                <input type="text" id="prop-x-int" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. (-2, 0), (6, 0)">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">Range</label>
+                                <input type="text" id="prop-range" class="w-full p-2 border rounded font-mono worksheet-input" placeholder="e.g. y >= -9">
+                            </div>
+                            <div class="flex flex-col md:col-span-2">
+                                <label class="text-sm font-semibold text-gray-600 mb-1">Concavity</label>
+                                <select id="prop-concavity" class="w-full p-2 border rounded font-mono worksheet-select">
+                                    <option value="">-- Select --</option>
+                                    <option value="Up">Up</option>
+                                    <option value="Down">Down</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Feedback & Controls -->
+            <div class="mt-8 border-t border-gray-200 pt-8 text-center flex flex-col items-center">
+                <div id="step-instructions" class="text-xl md:text-2xl font-bold text-gray-800 mb-2"></div>
+                <div id="feedback-area" class="mb-6 h-8 flex items-center justify-center"></div>
+                
+                <button id="checkBtn" class="bg-blue-600 text-white font-bold py-3 px-10 rounded-xl hover:bg-blue-700 transition shadow-md w-full sm:w-auto text-lg tracking-wide"></button>
+                <button id="nextBtn" class="hidden bg-green-600 text-white font-bold py-3 px-10 rounded-xl hover:bg-green-700 transition shadow-md w-full sm:w-auto text-lg tracking-wide">Next Problem</button>
+                <button id="restartBtn" class="hidden bg-red-600 text-white font-bold py-3 px-10 rounded-xl hover:bg-red-700 transition shadow-md w-full sm:w-auto text-lg tracking-wide">Play Again</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State variables
+        let currentProblem = {};
+        let studentVertex = null;
+        let studentPoint2 = null;
+        let score = 0;
+        let lives = 3;
+        let isGameOver = false;
+        let currentStep = 0; // 0: Vertex, 1: X-vals, 2: Y-vals, 3: Graph, 4: Properties
+
+        // DOM Elements
+        const svgGrid = document.getElementById('graph-svg');
+        const graphContainer = document.getElementById('svgGrid');
+        const checkBtn = document.getElementById('checkBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const feedbackArea = document.getElementById('feedback-area');
+        const instructionsArea = document.getElementById('step-instructions');
+        const modeSelect = document.getElementById('modeSelect');
+
+        // SVG Helper functions
+        function addSvgElement(tag, attrs) {
+            const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+            for(let k in attrs) el.setAttribute(k, attrs[k]);
+            svgGrid.appendChild(el);
+            return el;
+        }
+
+        function createSvgGrid() {
+            svgGrid.innerHTML = '';
+            // Grid background
+            addSvgElement('rect', {x: -10, y: -10, width: 20, height: 20, fill: '#ffffff'});
+            
+            // Draw lines
+            for (let i = -10; i <= 10; i++) {
+                const isAxis = (i === 0);
+                const color = isAxis ? '#0f172a' : '#e2e8f0';
+                const strokeWidth = isAxis ? '0.15' : '0.05';
+                
+                // Vertical lines
+                addSvgElement('line', {x1: i, y1: -10, x2: i, y2: 10, stroke: color, "stroke-width": strokeWidth});
+                // Horizontal lines
+                addSvgElement('line', {x1: -10, y1: i, x2: 10, y2: i, stroke: color, "stroke-width": strokeWidth});
+            }
+        }
+
+        function drawPoint(x, y, color, className) {
+            addSvgElement('circle', {
+                class: className,
+                cx: x, 
+                cy: -y, // SVG y is inverted
+                r: 0.35, 
+                fill: color
+            });
+        }
+
+        function drawParabola(a, h, k, color, className) {
+            let d = "";
+            for (let x = -10; x <= 10; x += 0.5) {
+                let y = a * Math.pow(x - h, 2) + k;
+                let svgX = x;
+                let svgY = -y; // SVG y is inverted
+                
+                if (x === -10) {
+                    d += `M ${svgX} ${svgY} `;
+                } else {
+                    d += `L ${svgX} ${svgY} `;
+                }
+            }
+            addSvgElement('path', {
+                class: className,
+                d: d,
+                fill: 'none',
+                stroke: color,
+                "stroke-width": "0.2"
+            });
+        }
+
+        function clearStudentDrawings() {
+            document.querySelectorAll('.student-drawing, .answer-parabola').forEach(el => el.remove());
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('scoreDisplay').innerText = `Score: ${score}`;
+            document.getElementById('livesDisplay').innerText = `Lives: ${'❤️'.repeat(lives)}${'🖤'.repeat(3 - lives)}`;
+        }
+
+        // Handles progressive UI changes to guide the student chunk by chunk
+        function updateStepUI() {
+            // Reset all active styling and disable everything (except the mode selector)
+            document.querySelectorAll('input:not(#modeSelect), select:not(#modeSelect)').forEach(el => {
+                el.disabled = true;
+                el.classList.remove('active-input');
+            });
+            graphContainer.classList.remove('graph-active');
+
+            if (currentStep === 0) {
+                ['table-x-2', 'table-y-2'].forEach(id => {
+                    let el = document.getElementById(id);
+                    el.disabled = false;
+                    el.classList.add('active-input');
+                });
+                checkBtn.innerText = "Check Vertex";
+                instructionsArea.innerHTML = `Step 1: Find the <span class="text-blue-600">Vertex</span>`;
+            } 
+            else if (currentStep === 1) {
+                [0, 1, 3, 4].forEach(i => {
+                    let el = document.getElementById(`table-x-${i}`);
+                    el.disabled = false;
+                    el.classList.add('active-input');
+                });
+                ['table-x-2', 'table-y-2'].forEach(id => document.getElementById(id).classList.add('correct-answer'));
+                
+                checkBtn.innerText = "Check X-Values";
+                instructionsArea.innerHTML = `Step 2: Pick <span class="text-blue-600">x-values</span> directly adjacent to the vertex`;
+            } 
+            else if (currentStep === 2) {
+                [0, 1, 3, 4].forEach(i => {
+                    let el = document.getElementById(`table-y-${i}`);
+                    el.disabled = false;
+                    el.classList.add('active-input');
+                    document.getElementById(`table-x-${i}`).classList.add('correct-answer');
+                });
+                ['table-x-2', 'table-y-2'].forEach(id => document.getElementById(id).classList.add('correct-answer'));
+
+                checkBtn.innerText = "Check Y-Values";
+                instructionsArea.innerHTML = `Step 3: Plug in x to calculate the <span class="text-blue-600">y-values</span>`;
+            } 
+            else if (currentStep === 3) {
+                for(let i=0; i<5; i++) {
+                    document.getElementById(`table-x-${i}`).classList.add('correct-answer');
+                    document.getElementById(`table-y-${i}`).classList.add('correct-answer');
+                }
+                graphContainer.classList.add('graph-active');
+                checkBtn.innerText = "Check Graph";
+                instructionsArea.innerHTML = `Step 4: Click the graph to plot the <span class="text-blue-600">Vertex</span>, then one other point`;
+            } 
+            else if (currentStep === 4) {
+                for(let i=0; i<5; i++) {
+                    document.getElementById(`table-x-${i}`).classList.add('correct-answer');
+                    document.getElementById(`table-y-${i}`).classList.add('correct-answer');
+                }
+                document.querySelectorAll('.worksheet-input, .worksheet-select').forEach(el => {
+                    el.disabled = false;
+                    el.classList.add('active-input');
+                });
+                checkBtn.innerText = "Check Properties";
+                instructionsArea.innerHTML = `Step 5: Identify the parabola's <span class="text-blue-600">Properties</span>`;
+            } 
+            else if (currentStep === 5) {
+                document.querySelectorAll('input:not(#modeSelect), select:not(#modeSelect)').forEach(el => {
+                    el.classList.remove('active-input');
+                    el.classList.add('correct-answer');
+                });
+                instructionsArea.innerHTML = `🎉 <span class="text-green-600">Problem Complete!</span> 🎉`;
+                checkBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+            }
+        }
+
+        function generateProblem() {
+            clearStudentDrawings();
+            studentVertex = null;
+            studentPoint2 = null;
+            feedbackArea.innerHTML = '';
+            checkBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+            
+            // Reset Chunking Steps
+            currentStep = 0;
+
+            // Determine current active mode
+            let mode = modeSelect.value;
+            if (mode === 'random') {
+                const modes = ['standard', 'factored', 'vertex'];
+                mode = modes[Math.floor(Math.random() * modes.length)];
+            }
+            
+            // MATH GENERATION
+            const aChoices = [1, -1, 2, -2];
+            let a = aChoices[Math.floor(Math.random() * aChoices.length)];
+            
+            // Limit vertex h to center to keep parabola visible
+            let h = Math.floor(Math.random() * 9) - 4; // -4 to 4
+            
+            // Distance (d) guarantees integer roots
+            let dChoices = Math.abs(a) === 1 ? [1, 2, 3] : [1, 2];
+            let d = dChoices[Math.floor(Math.random() * dChoices.length)];
+            
+            let r1 = h - d;
+            let r2 = h + d;
+            let k = -a * d * d; 
+            
+            let b = -2 * a * h;
+            let c = a * h * h + k; // y-intercept
+            
+            let xInts = [r1, r2];
+            let xIntStr = xInts.sort((a,b) => a-b).map(x => `(${x}, 0)`).join(', ');
+
+            // Calculate table points strictly stepped by 1 around the vertex
+            let tablePoints = [];
+            for(let i = 0; i < 5; i++) {
+                let xVal = h - 2 + i;
+                let yVal = a * Math.pow(xVal - h, 2) + k;
+                tablePoints.push({x: xVal, y: yVal});
+            }
+
+            // Store problem data globally
+            currentProblem = {
+                a, b, c, h, k,
+                vertex: {x: h, y: k},
+                aos: `x = ${h}`,
+                minMax: k,
+                yInt: c,
+                xInt: xIntStr,
+                concavity: a > 0 ? "Up" : "Down",
+                range: a > 0 ? `y >= ${k}` : `y <= ${k}`,
+                tablePoints
+            };
+
+            // DYNAMIC EQUATION FORMATTING
+            let eqStr = "y = ";
+            
+            if (mode === 'standard') {
+                if (a === -1) eqStr += "-x²";
+                else if (a !== 1) eqStr += a + "x²";
+                else eqStr += "x²";
+                
+                if (b > 0) eqStr += (eqStr === "y = " ? "" : " + ") + (b === 1 ? "x" : b + "x");
+                else if (b < 0) eqStr += " - " + (Math.abs(b) === 1 ? "x" : Math.abs(b) + "x");
+                
+                if (c > 0) eqStr += (eqStr === "y = " ? "" : " + ") + c;
+                else if (c < 0) eqStr += " - " + Math.abs(c);
+                
+                if (eqStr === "y = ") eqStr = "y = 0"; 
+                
+            } else if (mode === 'factored') {
+                if (a === -1) eqStr += "-";
+                else if (a !== 1) eqStr += a;
+
+                if (r1 === 0) {
+                    eqStr += "x" + (r2 > 0 ? `(x - ${r2})` : `(x + ${Math.abs(r2)})`);
+                } else if (r2 === 0) {
+                    eqStr += "x" + (r1 > 0 ? `(x - ${r1})` : `(x + ${Math.abs(r1)})`);
+                } else {
+                    let f1 = r1 > 0 ? `(x - ${r1})` : `(x + ${Math.abs(r1)})`;
+                    let f2 = r2 > 0 ? `(x - ${r2})` : `(x + ${Math.abs(r2)})`;
+                    if (Math.random() > 0.5) eqStr += f1 + f2;
+                    else eqStr += f2 + f1;
+                }
+                
+            } else if (mode === 'vertex') {
+                if (a === -1) eqStr += "-";
+                else if (a !== 1) eqStr += a;
+
+                if (h === 0) {
+                    eqStr += "x²";
+                } else {
+                    let hStr = h > 0 ? `- ${h}` : `+ ${Math.abs(h)}`;
+                    eqStr += `(x ${hStr})²`;
+                }
+
+                if (k > 0) eqStr += ` + ${k}`;
+                else if (k < 0) eqStr += ` - ${Math.abs(k)}`;
+            }
+
+            document.getElementById('problem-display').innerText = eqStr;
+
+            // Reset all UI Inputs EXCEPT modeSelect
+            document.querySelectorAll('input:not(#modeSelect), select:not(#modeSelect)').forEach(el => {
+                el.classList.remove('correct-answer', 'incorrect-answer', 'active-input');
+                if (el.type !== 'select-one') el.value = '';
+                if (el.type === 'select-one') el.value = '';
+            });
+
+            // Kick off progressive UI
+            updateStepUI();
+        }
+
+        function handleGraphClick(e) {
+            // Only allow graphing during Step 3
+            if(isGameOver || currentStep !== 3) return;
+            
+            const pt = svgGrid.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgP = pt.matrixTransform(svgGrid.getScreenCTM().inverse());
+            
+            // Snap to grid
+            const mathX = Math.round(svgP.x);
+            const mathY = Math.round(-svgP.y);
+
+            if (!studentVertex) {
+                studentVertex = {x: mathX, y: mathY};
+                drawPoint(mathX, mathY, '#2563eb', 'student-drawing');
+            } else if (!studentPoint2) {
+                if(mathX === studentVertex.x && mathY === studentVertex.y) return; 
+                studentPoint2 = {x: mathX, y: mathY};
+                drawPoint(mathX, mathY, '#2563eb', 'student-drawing');
+                
+                let studentA = (studentPoint2.y - studentVertex.y) / Math.pow(studentPoint2.x - studentVertex.x, 2);
+                drawParabola(studentA, studentVertex.x, studentVertex.y, '#3b82f6', 'student-drawing');
+            } else {
+                clearStudentDrawings();
+                studentVertex = {x: mathX, y: mathY};
+                studentPoint2 = null;
+                drawPoint(mathX, mathY, '#2563eb', 'student-drawing');
+            }
+        }
+
+        // ==========================================
+        // NORMALIZATION HELPERS
+        // ==========================================
+        function normalizeInput(str) {
+            return (str || '').toString()
+                .replace(/\s/g, '')          
+                .toLowerCase()
+                .replace(/^[xy]=/, '')       
+                .replace(/[()]/g, '');       
+        }
+
+        function normalizeCoordinates(str) {
+            let cleanStr = (str || '').replace(/\s/g, '').toLowerCase();
+            cleanStr = cleanStr.replace(/[\{\[]/g, '(').replace(/[\}\]]/g, ')');
+            
+            const pointRegex = /\(([^,]+),([^)]+)\)/g;
+            let match;
+            let points = [];
+            
+            while ((match = pointRegex.exec(cleanStr)) !== null) {
+                let xVal = parseFloat(match[1].replace(/[xy]=/g, ''));
+                let yVal = parseFloat(match[2].replace(/[xy]=/g, ''));
+                if (!isNaN(xVal) && !isNaN(yVal)) {
+                    points.push({ x: xVal, y: yVal });
+                }
+            }
+            
+            if (points.length === 0) return cleanStr.replace(/[xy]=/g, '');
+            
+            return points.sort((a, b) => a.x - b.x).map(p => `(${p.x},${p.y})`).join(',');
+        }
+
+        function showCorrectAnswers() {
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`table-x-${i}`).value = currentProblem.tablePoints[i].x;
+                document.getElementById(`table-y-${i}`).value = currentProblem.tablePoints[i].y;
+            }
+            document.getElementById('prop-vertex').value = `(${currentProblem.vertex.x}, ${currentProblem.vertex.y})`;
+            document.getElementById('prop-aos').value = currentProblem.aos;
+            document.getElementById('prop-minmax').value = currentProblem.minMax;
+            document.getElementById('prop-y-int').value = `(0, ${currentProblem.yInt})`;
+            document.getElementById('prop-x-int').value = currentProblem.xInt.replace(/\(|\)/g, match => match); // Keep clean
+            document.getElementById('prop-concavity').value = currentProblem.concavity;
+            document.getElementById('prop-range').value = currentProblem.range;
+
+            document.querySelectorAll('input:not(#modeSelect), select:not(#modeSelect)').forEach(el => {
+                el.classList.add('correct-answer');
+                el.classList.remove('incorrect-answer');
+            });
+            clearStudentDrawings();
+            drawParabola(currentProblem.a, currentProblem.h, currentProblem.k, '#ef4444', 'answer-parabola'); 
+        }
+
+        function checkProgress() {
+            if (isGameOver) return;
+            
+            let isCorrect = true;
+            let errorMsg = "";
+
+            // --- STEP 0: VERTEX ---
+            if (currentStep === 0) {
+                const xInput = document.getElementById('table-x-2');
+                const yInput = document.getElementById('table-y-2');
+                if (parseFloat(xInput.value) !== currentProblem.vertex.x) { xInput.classList.add('incorrect-answer'); isCorrect = false; }
+                else { xInput.classList.remove('incorrect-answer'); }
+
+                if (parseFloat(yInput.value) !== currentProblem.vertex.y) { yInput.classList.add('incorrect-answer'); isCorrect = false; }
+                else { yInput.classList.remove('incorrect-answer'); }
+
+                if (!isCorrect) errorMsg = "Check your vertex calculations. Plug in correctly!";
+            }
+            // --- STEP 1: X-VALUES ---
+            else if (currentStep === 1) {
+                [0, 1, 3, 4].forEach(i => {
+                    const xInput = document.getElementById(`table-x-${i}`);
+                    if (parseFloat(xInput.value) !== currentProblem.tablePoints[i].x) {
+                        xInput.classList.add('incorrect-answer');
+                        isCorrect = false;
+                    } else {
+                        xInput.classList.remove('incorrect-answer');
+                    }
+                });
+                if (!isCorrect) errorMsg = "Pick x-values that step by 1 immediately left and right of the vertex.";
+            }
+            // --- STEP 2: Y-VALUES ---
+            else if (currentStep === 2) {
+                [0, 1, 3, 4].forEach(i => {
+                    const yInput = document.getElementById(`table-y-${i}`);
+                    if (parseFloat(yInput.value) !== currentProblem.tablePoints[i].y) {
+                        yInput.classList.add('incorrect-answer');
+                        isCorrect = false;
+                    } else {
+                        yInput.classList.remove('incorrect-answer');
+                    }
+                });
+                if (!isCorrect) errorMsg = "Double check your math. Plug the x-value back into the equation.";
+            }
+            // --- STEP 3: GRAPH ---
+            else if (currentStep === 3) {
+                if (!studentVertex || !studentPoint2) {
+                    feedbackArea.innerHTML = `<p class="incorrect-text font-semibold">Please plot the vertex and one other point!</p>`;
+                    return; // Don't deduct a life, just prompt them
+                }
+                const isVertexCorrect = studentVertex.x === currentProblem.vertex.x && studentVertex.y === currentProblem.vertex.y;
+                const expectedY = currentProblem.a * Math.pow(studentPoint2.x - currentProblem.h, 2) + currentProblem.k;
+                const isPoint2Correct = studentPoint2.y === expectedY;
+                
+                if (!isVertexCorrect || !isPoint2Correct) {
+                    isCorrect = false;
+                    errorMsg = "Your graphed points don't form the correct parabola. Try again.";
+                    clearStudentDrawings();
+                    studentVertex = null;
+                    studentPoint2 = null;
+                }
+            }
+            // --- STEP 4: PROPERTIES ---
+            else if (currentStep === 4) {
+                const checkProp = (id, correctVal, isCoord = false) => {
+                    const el = document.getElementById(id);
+                    let userVal = isCoord ? normalizeCoordinates(el.value) : normalizeInput(el.value);
+                    let targetVal = isCoord ? normalizeCoordinates(correctVal) : normalizeInput(correctVal.toString());
+
+                    if (userVal !== targetVal) {
+                        el.classList.add('incorrect-answer');
+                        isCorrect = false;
+                    } else {
+                        el.classList.remove('incorrect-answer');
+                    }
+                };
+
+                checkProp('prop-vertex', `(${currentProblem.vertex.x}, ${currentProblem.vertex.y})`, true);
+                checkProp('prop-aos', currentProblem.aos);
+                checkProp('prop-minmax', currentProblem.minMax);
+                checkProp('prop-y-int', `(0, ${currentProblem.yInt})`, true);
+                checkProp('prop-x-int', currentProblem.xInt, true);
+                checkProp('prop-concavity', currentProblem.concavity);
+                checkProp('prop-range', currentProblem.range);
+
+                if (!isCorrect) errorMsg = "Review the highlighted properties.";
+            }
+
+            // --- RESOLVE ---
+            feedbackArea.innerHTML = ''; // Clear previous messages
+            
+            if (isCorrect) {
+                feedbackArea.innerHTML = `<p class="correct-text font-bold">Great job!</p>`;
+                currentStep++;
+                if (currentStep <= 5) updateStepUI();
+                if (currentStep === 5) {
+                    score += 10;
+                    updateStatsDisplay();
+                }
+            } else {
+                lives--;
+                updateStatsDisplay();
+                if (lives <= 0) {
+                    isGameOver = true;
+                    instructionsArea.innerHTML = `<span class="text-red-700">Out of lives! Review the correct answers below.</span>`;
+                    feedbackArea.innerHTML = `<p class="incorrect-text text-xl font-bold">Game Over! Final Score: ${score}</p>`;
+                    checkBtn.classList.add('hidden');
+                    restartBtn.classList.remove('hidden');
+                    showCorrectAnswers();
+                } else {
+                    feedbackArea.innerHTML = `<p class="incorrect-text font-semibold">Oops! ${errorMsg}</p>`;
+                }
+            }
+        }
+
+        function handleRestart() {
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            updateStatsDisplay();
+            restartBtn.classList.add('hidden');
+            generateProblem();
+        }
+
+        // --- Event Listeners ---
+        svgGrid.addEventListener('click', handleGraphClick);
+        checkBtn.addEventListener('click', checkProgress);
+        nextBtn.addEventListener('click', generateProblem);
+        restartBtn.addEventListener('click', handleRestart);
+        modeSelect.addEventListener('change', generateProblem);
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            createSvgGrid();
+            generateProblem();
+            updateStatsDisplay();
+        });
+    </script>
+</body>
+</html>
